@@ -2,7 +2,7 @@ __author__ = 'Eyal'
 import time
 
 
-class sproxy:
+class sProxy:
 
     def __init__(self, name):
         self.name = name
@@ -22,7 +22,7 @@ class sproxy:
     def check_dump_age(self):
         # TODO - Create check_dump_age func
         time.sleep(1)
-        return "Age Checked"
+        return 30
 
     def stop_proxy(self):
         # TODO - Create stop_proxy func
@@ -53,3 +53,8 @@ class sproxy:
         # TODO - Create out_rotation func
         time.sleep(1)
         return "Proxy is out of rotation"
+
+    def check_state(self):
+        # TODO - Create check_state func
+        time.sleep(1)
+        return "Stopped"
