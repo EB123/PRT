@@ -111,6 +111,7 @@ def start_prm(main_conn):
         elif request[0] == "put in queue":
             q.put(request[1])
         elif request[0] == "exit":
+            socket.send_json("Bye Bye!")
             sys.exit()
         else:
             try:
