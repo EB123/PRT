@@ -1,5 +1,6 @@
 import time
 import multiprocessing
+import zmq
 
 
 def worker_get_instructions(conn):
@@ -22,3 +23,10 @@ def prm_get_instructions(conn):
             return instructions
     except Exception as e:
         raise
+
+
+def create_zmq_connection(address, port, socket_type):
+    context = zmq.Context()
+    socket = context.socket(socket_type)
+    socket.connect("tcp://%s:%s" % (address, port))
+    return socket

@@ -4,6 +4,8 @@ import sproxy
 import sys
 import prt_utils
 import Queue
+import queue_device
+import zmq
 
 def proxy_worker(q, conn):
 
@@ -64,7 +66,6 @@ def proxy_worker(q, conn):
 
             while proxy.check_state() != "Started":
                 print "Waiting for proxy to start..."
-                return
                 time.sleep(5)
                 prt_utils.worker_get_instructions(conn)
             proxy.in_rotation()
@@ -73,6 +74,14 @@ def proxy_worker(q, conn):
     except Exception as e:
         raise
 
+def test():
+    return "This Is Test Func"
+
+def active_proxy_workers():
+    active_count = 0
+    for proc in globals()['processes']:
+        active_count += 1
+    return active_count
 
 def create_process(q):
     my_conn, proc_conn = multiprocessing.Pipe()
@@ -82,9 +91,37 @@ def create_process(q):
 
 
 def start_prm(main_conn):
+    this_module = sys.modules[__name__]
     toExit = False
-    processes = []
+    globals()['processes'] = []
     q = multiprocessing.Queue()
+    socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP)
+    while True:
+        while socket.poll(timeout = 10) == 0:
+            time.sleep(2)
+            multiprocessing.active_children()
+            pass
+        request = socket.recv_json()
+        if request[0] == "start_proc":
+            proc, my_conn = create_process(q)
+            globals()['processes'].append([proc, my_conn])
+            proc.start()
+            response = proc.pid
+            socket.send_json(response)
+        elif request[0] == "put in queue":
+            q.put(request[1])
+        elif request[0] == "exit":
+            sys.exit()
+        else:
+            try:
+                method = getattr(this_module, request[0])
+                response = method()
+            except Exception:
+                time.sleep(2)
+                response = "sorry, didnt understand"
+            finally:
+                socket.send_json(response)
+    """"
     while not toExit:
         #name = raw_input("Please enter proxy name: ")
         #proc = multiprocessing.Process(target=proxy_worker, args=(q, conn))
@@ -98,6 +135,7 @@ def start_prm(main_conn):
         elif instructions == "exit":
             sys.exit()
         time.sleep(3)
+    """
 
 if __name__ == '__main__':
     """""
