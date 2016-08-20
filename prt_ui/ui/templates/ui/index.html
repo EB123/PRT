@@ -5,15 +5,62 @@
     <meta charset="UTF-8">
     <title>Index</title>
     <script src="{% static 'ui/js/jquery.js' %}" ></script>
+<script type="text/javascript">
+(function($) {
+
+    $.ajaxSetup({
+        type: 'POST',
+        timeout: 3000000,
+        error: function() {
+            alert("timeout!");
+                     }
+    })
+
+    $.fn.getDirContent = function( options, callbackFunc ) {
+        var settings = $.extend({site:null}, options);
+        var dir = $( this );
+        $.post("{% url 'ui:ajax_create_process' %}", {ajaxarg_site:settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'},
+        function(data,status){
+            alert(data);
+            $("#num_workers").load("{% url 'ui:auto_reload' %}");
+        })
+        .fail(function(){
+            alert("error " + status );
+        });
+        return false;
+    };
+}(jQuery));
+</script>
+<script type="text/javascript">
+$(document).ready(function(){
+  var clicked = false;
+
+  $("#files").on("click", "button", function(){
+    var keyname = $('#which_site option:selected').val()
+        $(this).getDirContent({site: keyname}, function(){
+        });
+
+  });
+});
+</script>
 </head>
 <body>
 
 <p>Welcome to PRT!</p>
-
-{% for site, num_workers in active_workers.items %}
+<div id="num_workers">
 <ul>
+{% for site, num_workers in active_workers.items %}
 <li>{{site}}: {{num_workers}} active workers</li>
-</ul>
 {% endfor %}
+</ul>
+</div>
+<div  id="files"  style="font-weight:bold;font-size:1.2em;line-height:150%;font-family: Trebuchet MS,Tahoma,Verdana,Arial,sans-serif;background:#eeeeee">
+<button style="margin-right:5px" id="1" value="1" data-wasLoaded="false"> Add Worker   </button>
+<select name="sites" id="which_site">
+    <option value="ny_an">ny_an</option>
+    <option value="ny_lb">ny_lb</option>
+    <option value="sg">sg</option>
+</select>
+</div>
 </body>
 </html>

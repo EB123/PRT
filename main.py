@@ -25,7 +25,7 @@ def main_worker(q, zmq_addres, zmq_ui_port, zmq_prm_port, zmq_mon_port):
         request.pop(0)
         socket.send_json(request)
         while socket.poll(timeout = 10) == 0:
-            time.sleep(2)
+            time.sleep(1)
         response = socket.recv_json()
         return response
 
@@ -36,7 +36,7 @@ def main_worker(q, zmq_addres, zmq_ui_port, zmq_prm_port, zmq_mon_port):
         socket_mon = prt_utils.create_zmq_connection(zmq_address, zmq_mon_port, zmq.REQ, "connect")
         while not toExit:
             while socket_ui.poll(timeout = 10) == 0:
-                time.sleep(2)
+                time.sleep(1)
                 pass
             request = socket_ui.recv_json()
             if request[0] == "prm":
@@ -63,6 +63,13 @@ def main_worker(q, zmq_addres, zmq_ui_port, zmq_prm_port, zmq_mon_port):
         sys.exit()
 
 
+def ui_garbage_collector(zmq_addres, zmq_ui_port):
+    socket = prt_utils.create_zmq_connection(zmq_addres, zmq_ui_port, zmq.REP, "bind")
+    while socket.poll(timeout = 100) > 0:
+        socket.recv()
+        socket.send_json("Garbage Collected!")
+    socket.close()
+
 
 
 
@@ -72,7 +79,7 @@ if __name__ == '__main__':
         zmq_address = "127.0.0.1"
         zmq_procs = []
         main_workers_pool = []
-        num_main_workers = 0
+        num_main_workers = 1
         # Create zmq queues with the following ports:
         # First port (currently 5553) - UI sends to Main. Type - zmq.REQ
         # Second port (currently 5554) - Main receives from UI. Type - zmq.REP
@@ -87,6 +94,7 @@ if __name__ == '__main__':
             zmq_procs.append(proc)
         """
         #time.sleep(10)
+        ui_garbage_collector(zmq_address, "5553")
         for i in range(5553, 5559, 2): # TODO - change ports numbers to vars
             proc = create_zmqueues(zmq_address, i, i+1)
             proc.daemon = True
