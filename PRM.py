@@ -77,34 +77,53 @@ def proxy_worker(q, conn):
 def test():
     return "This Is Test Func"
 
-def active_proxy_workers():
-    active_count = 0
-    for proc in globals()['processes']:
-        active_count += 1
+def active_proxy_workers(**kwargs):
+    sites_dict = kwargs['sites_dict']
+    active_count = {}
+    for site in sites_dict.keys():
+        active_count[site] = len(sites_dict[site]['procs'].keys())
     return active_count
 
-def create_process(q):
-    my_conn, proc_conn = multiprocessing.Pipe()
-    proc = multiprocessing.Process(target=proxy_worker, args=(q, proc_conn))
+def create_process(**kwargs):
+    sites_dict = kwargs['sites_dict']
+    site = kwargs['site']
+    prm_conn, proc_conn = multiprocessing.Pipe()
+    proc = multiprocessing.Process(target=proxy_worker, args=(sites_dict[site]['site_q'], proc_conn))
     proc.daemon = True
-    return proc, my_conn
+    proc.start()
+    sites_dict[site]['procs'][proc.pid] = {}
+    sites_dict[site]['procs'][proc.pid]['conn'] = prm_conn
+    return proc.pid
+
+def create_sites_queues(sites_dict):
+    for site in sites_dict.keys():
+        q = multiprocessing.Queue()
+        sites_dict[site]['site_q'] = q
+
 
 
 def start_prm(main_conn):
     this_module = sys.modules[__name__]
+    prmDict = {} # TODO - There should be an init func that returns prmDict with all its keys (sites_dict and so on...)
     toExit = False
-    globals()['processes'] = []
+    SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+    prmDict['sites_dict'] = {}
+    for site in SITES:
+        prmDict['sites_dict'][site] = {}
+        prmDict['sites_dict'][site]['procs'] = {}
+    create_sites_queues(prmDict['sites_dict'])
+    prmDict['processes'] = []
     q = multiprocessing.Queue()
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP)
     while True:
         while socket.poll(timeout = 10) == 0:
-            time.sleep(2)
+            time.sleep(1)
             multiprocessing.active_children()
             pass
         request = socket.recv_json()
         if request[0] == "start_proc":
             proc, my_conn = create_process(q)
-            globals()['processes'].append([proc, my_conn])
+            prmDict['processes'].append([proc, my_conn])
             proc.start()
             response = proc.pid
             socket.send_json(response)
@@ -116,10 +135,18 @@ def start_prm(main_conn):
         else:
             try:
                 method = getattr(this_module, request[0])
-                response = method()
-            except Exception:
+                if len(request) > 1:
+                    kwargs = {}
+                    for arg in request[1]:
+                        kwargs[arg] = prmDict[arg]
+                    for arg in request[2].keys():
+                        kwargs[arg] = request[2][arg]
+                    response = method(**kwargs)
+                else:
+                    response = method()
+            except Exception as e:
                 time.sleep(2)
-                response = "sorry, didnt understand"
+                response = str(e) # TODO - respone should contain a "success/fail" field
             finally:
                 socket.send_json(response)
     """"

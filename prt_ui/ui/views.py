@@ -14,7 +14,7 @@ def create_zmq_connection(address, port, socket_type): # TODO - should be taken 
 
 def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-    socket.send_json(["prm", "active_proxy_workers"])
+    socket.send_json(["prm", "active_proxy_workers", ["sites_dict"], {}])
     resp = socket.recv_json()
     context = {'active_workers': resp}
     return render(request, "ui/index.html", context)

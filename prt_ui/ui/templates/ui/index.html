@@ -10,7 +10,10 @@
 
 <p>Welcome to PRT!</p>
 
-<p>There are currently {{ active_workers }} active workers</p>
-
+{% for site, num_workers in active_workers.items %}
+<ul>
+<li>{{site}}: {{num_workers}} active workers</li>
+</ul>
+{% endfor %}
 </body>
 </html>
