@@ -46,7 +46,7 @@
   text-overflow: ellipsis;
         width: 95%;
     height: 17vh;
-    overflow: scroll !important;
+    overflow: auto !important;
     border-style: solid;
     border-width: 5px !important;
 }
@@ -88,13 +88,25 @@
                      }
     })
 
-    $.fn.getDirContent = function( options, callbackFunc ) {
+    $.fn.addWorker = function( options, callbackFunc ) {
         var settings = $.extend({site:null}, options);
-        var dir = $( this );
         $.post("{% url 'ui:ajax_create_process' %}", {ajaxarg_site:settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#"+settings.site).load("{% url 'ui:auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
+        })
+        .fail(function(){
+            alert("error " + status );
+        });
+        return false;
+    };
+
+    $.fn.addToQ = function( options, callbackFunc ) {
+        var settings = $.extend({site:null, proxy_name:null}, options);
+        $.post("{% url 'ui:ajax_add_to_queue' %}", {ajaxarg_site:settings.site, ajaxarg_proxy_name:settings.proxy_name, csrfmiddlewaretoken:'{{ csrf_token }}'},
+        function(data,status){
+            alert(data);
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
         })
         .fail(function(){
             alert("error " + status );
@@ -105,29 +117,52 @@
 </script>
 <script type="text/javascript">
 $(document).ready(function(){
-  var clicked = false;
-
-  $("#files").on("click", "button", function(){
-    var keyname = $('#which_site option:selected').val();
+  $("#sites").on("click", ".Add-Worker", function(){
+    var lock = $(".Add-Worker").attr("data-locked");
+    if (lock == "True") {
+        return false;
+    }
+    $(".Add-Worker").attr('data-locked', "True");
     var site_name = $(this).closest("div").attr("id");
-        $(this).getDirContent({site: site_name}, function(){
+        $(this).addWorker({site: site_name}, function(){
         });
 
   });
+  $("#sites").on("click", ".Add-To-Q", function(event){
+    var lock = $(".Add-To-Q").attr("data-locked");
+    if (lock == "True") {
+        return false;
+    }
+    $(".Add-To-Q").attr('data-locked', "True");
+    var site_name = $(this).closest("div").attr("id");
+    var target_button = event.target.id;
+    alert(target_button);
+    var proxy_name = $("#"+target_button).siblings("select").find("option:selected").attr("value");
+    alert(proxy_name);
+        $(this).addToQ({site: site_name, proxy_name: proxy_name}, function(){
+        });
+
+  });
+
 });
 </script>
 </head>
 <body>
 
 <p>Welcome to PRT!</p>
-<div  id="files">
+<div  id="sites">
 <div id="num_workers" class="num_workers">
-{% for site, num_workers in active_workers.items %}
+{% for site, site_hash in active_workers.items %}
 <div id="{{site}}" class="enjoy-css2">
-    <button  style="margin-top:0" id="1" value="1" data-wasLoaded="false"> Add Worker   </button>
-    {% for num in test %}
-<h3 class="text_data">{{site}}: {{num_workers}} active workers</h3>
-    {% endfor %}
+    <button  style="margin-top:0" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
+    <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q"> Add To Queue   </button>
+    <select name="proxies" id="proxies">
+        {% for proxy_name in site_hash.proxies %}
+            <option value="{{proxy_name}}">{{proxy_name}}</option>
+        {% endfor %}
+    </select>
+<h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
+
 
 </div>
 {% endfor %}

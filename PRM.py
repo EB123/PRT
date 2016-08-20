@@ -6,6 +6,26 @@ import prt_utils
 import Queue
 import queue_device
 import zmq
+import os
+import logging
+
+
+
+### Proxies For Test Purposes Only ###
+
+SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+
+ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27']
+ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12']
+ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27']
+ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07']
+lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27']
+lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
+sg = ["sgproxy12", 'sgproxy13', 'sgproxy14']
+
+#######################
+
+
 
 def proxy_worker(q, conn):
 
@@ -35,21 +55,36 @@ def proxy_worker(q, conn):
         result = method()
         return result
 
+    def temp_logger(): # TODO - Create an async logging feature
+        log_base_dir = "/tmp/prt_logs"
+        log_file = os.path.join(log_base_dir, "ProxyWorker-%s" % str(os.getpid()))
+        logging.basicConfig(level=logging.INFO,
+            format='%(asctime)s %(levelname)-6s FUNC_NAME:%(funcName)-16s %(message)s',
+            datefmt='%m-%d %H:%M',
+            filename=log_file)
+        logger = logging.getLogger(__name__)
+        ch = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', '%m-%d %H:%M')
+        ch.setFormatter(formatter)
+        ch.setLevel(logging.INFO)
+        logger.root.addHandler(ch)
+        return logger
 
     try:
 
         stopWorker = False
-
+        logger = temp_logger()
         while not stopWorker:
+            logger.info("I'M UP!")
             p = None
+            logger.info("Waiting for input...")
             while not p:
                 try:
                     p = q.get(True, 1)
                     prt_utils.worker_get_instructions(conn)
                 except Queue.Empty:
                     pass
-            path = "/tmp/process_%s" % p
-            sys.stdout = open(path, "w")
+            logger.info("Got a new proxy to work on: %s" % p)
             proxy = sproxy.sProxy(p)
 
             while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
@@ -62,10 +97,10 @@ def proxy_worker(q, conn):
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
                 prt_utils.worker_get_instructions(conn)
-                print run_next_step(proxy, action)
+                print "Process-%s: %s" % (os.getpid(),run_next_step(proxy, action))
 
             while proxy.check_state() != "Started":
-                print "Waiting for proxy to start..."
+                print "Process-%s: Waiting for proxy to start..." % os.getpid()
                 time.sleep(5)
                 prt_utils.worker_get_instructions(conn)
             proxy.in_rotation()
@@ -81,7 +116,9 @@ def active_proxy_workers(**kwargs):
     sites_dict = kwargs['sites_dict']
     active_count = {}
     for site in sites_dict.keys():
-        active_count[site] = len(sites_dict[site]['procs'].keys())
+        active_count[site] = {}
+        active_count[site]['active_workers'] = len(sites_dict[site]['procs'].keys())
+        active_count[site]['proxies'] = globals()[site]
     return active_count
 
 def create_process(**kwargs):
@@ -100,6 +137,13 @@ def create_sites_queues(sites_dict):
         q = multiprocessing.Queue()
         sites_dict[site]['site_q'] = q
 
+def add_to_site_q(**kwargs):
+    sites_dict = kwargs['sites_dict']
+    site = kwargs['site']
+    proxy_name = kwargs['proxy_name']
+    site_q = sites_dict[site]['site_q']
+    site_q.put(proxy_name)
+    return "%s was added to queue!" % proxy_name
 
 
 def start_prm(main_conn):
