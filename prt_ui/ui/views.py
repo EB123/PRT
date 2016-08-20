@@ -17,7 +17,10 @@ def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     socket.send_json(["prm", "active_proxy_workers", ["sites_dict"], {}])
     resp = socket.recv_json()
-    context = {'active_workers': resp}
+    test = []
+    for i in range(50):
+        test.append(i)
+    context = {'active_workers': resp, 'test': test}
     return render(request, "ui/index.html", context)
 
 
@@ -33,15 +36,19 @@ def ajax_create_process(request):
         return HttpResponse("OK!")
 
 def auto_reload(request): # TODO - this func should be called from ajax_create_process and not from jquery
+    request_site = request.POST['ajaxarg_site']
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     socket.send_json(["prm", "active_proxy_workers", ["sites_dict"], {}])
     resp = socket.recv_json()
     socket.close()
     data = []
-    data.append("<ul>")
-    for site in resp:
-        data.append("<li>%s: %d active workers</li>" % (site, resp[site]))
-    data.append("</ul>")
+    #data.append("<ul>")
+    data.append("<button  style='margin-top:0' id='1' value='1' data-wasLoaded='false'> Add Worker   </button>")
+    for i in range(50):
+        for site in resp:
+            if request_site == site:
+                data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]))
+        #data.append("</ul>")
     return HttpResponse(data)
     #return data
 

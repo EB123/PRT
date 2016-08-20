@@ -5,12 +5,84 @@
     <meta charset="UTF-8">
     <title>Index</title>
     <script src="{% static 'ui/js/jquery.js' %}" ></script>
+<style>
+
+    .num_workers {
+    -moz-column-count: 2;
+    -moz-column-gap: 30px;
+    -webkit-column-count: 2;
+    -webkit-column-gap: 30px;
+
+    column-count: 2;
+    column-gap: 2vw;
+        -webkit-column-fill: auto; /* Chrome, Safari, Opera */
+    -moz-column-fill: auto; /* Firefox */
+    column-fill: auto;
+    height: 90vh;
+    width: 95vw;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-left: 2vw;
+
+    }
+
+    .enjoy-css2 {
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  float: right;
+
+  top: 0;
+  right: 5%;
+  bottom: 0;
+  left: 0;
+  margin: 2% 0 2% 5%;
+  overflow: scroll;
+  border: 2px solid rgba(0,150,255,0.91);
+  font: normal 15px/1 "Times New Roman", Times, serif;
+  color: rgba(5,0,0,1);
+  text-align: justify;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+        width: 95%;
+    height: 17vh;
+    overflow: scroll !important;
+    border-style: solid;
+    border-width: 5px !important;
+}
+
+.enjoy-css {
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  width: 45%;
+  height: 10%;
+  position: relative;
+  top: 0;
+  right: 5%;
+  bottom: 0;
+  left: 0;
+  margin: 2% 0 0% 5%;
+
+  overflow-y: scroll;
+  border: 2px solid rgba(0,150,255,0.91);
+  font: normal 15px/1 "Times New Roman", Times, serif;
+  color: rgba(5,0,0,1);
+  text-align: justify;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+    overflow: scroll !important;
+  border-style: solid;
+  border-width: 5px !important;
+}
+
+</style>
 <script type="text/javascript">
 (function($) {
 
     $.ajaxSetup({
         type: 'POST',
-        timeout: 3000000,
+        timeout: 3000,
         error: function() {
             alert("timeout!");
                      }
@@ -22,7 +94,7 @@
         $.post("{% url 'ui:ajax_create_process' %}", {ajaxarg_site:settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:auto_reload' %}");
+            $("#"+settings.site).load("{% url 'ui:auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
         })
         .fail(function(){
             alert("error " + status );
@@ -36,8 +108,9 @@ $(document).ready(function(){
   var clicked = false;
 
   $("#files").on("click", "button", function(){
-    var keyname = $('#which_site option:selected').val()
-        $(this).getDirContent({site: keyname}, function(){
+    var keyname = $('#which_site option:selected').val();
+    var site_name = $(this).closest("div").attr("id");
+        $(this).getDirContent({site: site_name}, function(){
         });
 
   });
@@ -47,20 +120,20 @@ $(document).ready(function(){
 <body>
 
 <p>Welcome to PRT!</p>
-<div id="num_workers">
-<ul>
+<div  id="files">
+<div id="num_workers" class="num_workers">
 {% for site, num_workers in active_workers.items %}
-<li>{{site}}: {{num_workers}} active workers</li>
-{% endfor %}
-</ul>
+<div id="{{site}}" class="enjoy-css2">
+    <button  style="margin-top:0" id="1" value="1" data-wasLoaded="false"> Add Worker   </button>
+    {% for num in test %}
+<h3 class="text_data">{{site}}: {{num_workers}} active workers</h3>
+    {% endfor %}
+
 </div>
-<div  id="files"  style="font-weight:bold;font-size:1.2em;line-height:150%;font-family: Trebuchet MS,Tahoma,Verdana,Arial,sans-serif;background:#eeeeee">
-<button style="margin-right:5px" id="1" value="1" data-wasLoaded="false"> Add Worker   </button>
-<select name="sites" id="which_site">
-    <option value="ny_an">ny_an</option>
-    <option value="ny_lb">ny_lb</option>
-    <option value="sg">sg</option>
-</select>
+{% endfor %}
+</div>
+
+
 </div>
 </body>
 </html>
