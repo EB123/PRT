@@ -7,6 +7,7 @@ import queue_device
 import prt_utils
 import os
 import Queue
+#from zmq.devices import ProcessDevice
 
 def create_process(workerFunc):
     my_conn, proc_conn = multiprocessing.Pipe()
@@ -16,6 +17,7 @@ def create_process(workerFunc):
 def create_zmqueues(address, fe_port, be_port):
     proc = multiprocessing.Process(target=queue_device.main, args=(address, fe_port, be_port))
     return proc
+
 
 def main_worker(q, zmq_addres, zmq_ui_port, zmq_prm_port, zmq_mon_port):
 
@@ -29,9 +31,9 @@ def main_worker(q, zmq_addres, zmq_ui_port, zmq_prm_port, zmq_mon_port):
 
     try:
         toExit = False
-        socket_ui = prt_utils.create_zmq_connection(zmq_addres, zmq_ui_port, zmq.REP)
-        socket_prm = prt_utils.create_zmq_connection(zmq_address, zmq_prm_port, zmq.REQ)
-        socket_mon = prt_utils.create_zmq_connection(zmq_address, zmq_mon_port, zmq.REQ)
+        socket_ui = prt_utils.create_zmq_connection(zmq_addres, zmq_ui_port, zmq.REP, "bind")
+        socket_prm = prt_utils.create_zmq_connection(zmq_address, zmq_prm_port, zmq.REQ, "connect")
+        socket_mon = prt_utils.create_zmq_connection(zmq_address, zmq_mon_port, zmq.REQ, "connect")
         while not toExit:
             while socket_ui.poll(timeout = 10) == 0:
                 time.sleep(2)
@@ -70,7 +72,7 @@ if __name__ == '__main__':
         zmq_address = "127.0.0.1"
         zmq_procs = []
         main_workers_pool = []
-        num_main_workers = 2
+        num_main_workers = 0
         # Create zmq queues with the following ports:
         # First port (currently 5553) - UI sends to Main. Type - zmq.REQ
         # Second port (currently 5554) - Main receives from UI. Type - zmq.REP
@@ -108,6 +110,8 @@ if __name__ == '__main__':
         while not toExit:
             for proc in main_workers_pool:
                 proc.join(timeout=0.1)
+            #for proc in zmq_procs:
+                #proc.join(timeout=0.1)
             try:
                 p = q.get(True, 1)
                 print "got exit!"
@@ -134,9 +138,10 @@ if __name__ == '__main__':
         """
     except KeyboardInterrupt:
         print "Caught Ctrl+C!"
-    except Exception:
+    except Exception as e:
         print "Error!"
         print "Error2!"
+        print str(e)
     finally:
         multiprocessing.active_children()
         sys.exit()

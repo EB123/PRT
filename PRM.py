@@ -114,7 +114,7 @@ def start_prm(main_conn):
     create_sites_queues(prmDict['sites_dict'])
     prmDict['processes'] = []
     q = multiprocessing.Queue()
-    socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP)
+    socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
     while True:
         while socket.poll(timeout = 10) == 0:
             time.sleep(1)
