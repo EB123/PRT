@@ -39,8 +39,9 @@
   margin: 2% 0 2% 5%;
   overflow: scroll;
   border: 2px solid rgba(0,150,255,0.91);
-  font: normal 15px/1 "Times New Roman", Times, serif;
+  font: normal 17px/2 "Times New Roman", Times, serif;
   color: rgba(5,0,0,1);
+    text-indent: 13px;
   text-align: justify;
   -o-text-overflow: ellipsis;
   text-overflow: ellipsis;
@@ -136,9 +137,7 @@ $(document).ready(function(){
     $(".Add-To-Q").attr('data-locked', "True");
     var site_name = $(this).closest("div").attr("id");
     var target_button = event.target.id;
-    alert(target_button);
     var proxy_name = $("#"+target_button).siblings("select").find("option:selected").attr("value");
-    alert(proxy_name);
         $(this).addToQ({site: site_name, proxy_name: proxy_name}, function(){
         });
 

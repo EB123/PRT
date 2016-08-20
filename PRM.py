@@ -59,7 +59,7 @@ def proxy_worker(q, conn):
         log_base_dir = "/tmp/prt_logs"
         log_file = os.path.join(log_base_dir, "ProxyWorker-%s" % str(os.getpid()))
         logging.basicConfig(level=logging.INFO,
-            format='%(asctime)s %(levelname)-6s FUNC_NAME:%(funcName)-16s %(message)s',
+            format='%(asctime)s %(levelname)-8s %(message)s',
             datefmt='%m-%d %H:%M',
             filename=log_file)
         logger = logging.getLogger(__name__)
