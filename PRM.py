@@ -165,34 +165,22 @@ def start_prm(main_conn):
             multiprocessing.active_children()
             pass
         request = socket.recv_json()
-        if request[0] == "start_proc":
-            proc, my_conn = create_process(q)
-            prmDict['processes'].append([proc, my_conn])
-            proc.start()
-            response = proc.pid
+        try:
+            method = getattr(this_module, request[0])
+            if len(request) > 1:
+                kwargs = {}
+                for arg in request[1]:
+                    kwargs[arg] = prmDict[arg]
+                for arg in request[2].keys():
+                    kwargs[arg] = request[2][arg]
+                response = method(**kwargs)
+            else:
+                response = method()
+        except Exception as e:
+            time.sleep(2)
+            response = str(e) # TODO - respone should contain a "success/fail" field
+        finally:
             socket.send_json(response)
-        elif request[0] == "put in queue":
-            q.put(request[1])
-        elif request[0] == "exit":
-            socket.send_json("Bye Bye!")
-            sys.exit()
-        else:
-            try:
-                method = getattr(this_module, request[0])
-                if len(request) > 1:
-                    kwargs = {}
-                    for arg in request[1]:
-                        kwargs[arg] = prmDict[arg]
-                    for arg in request[2].keys():
-                        kwargs[arg] = request[2][arg]
-                    response = method(**kwargs)
-                else:
-                    response = method()
-            except Exception as e:
-                time.sleep(2)
-                response = str(e) # TODO - respone should contain a "success/fail" field
-            finally:
-                socket.send_json(response)
     """"
     while not toExit:
         #name = raw_input("Please enter proxy name: ")
