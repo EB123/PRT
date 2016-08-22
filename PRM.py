@@ -122,14 +122,16 @@ def active_proxy_workers(**kwargs):
     return active_count
 
 def create_process(**kwargs):
-    sites_dict = kwargs['sites_dict']
+    processes = kwargs['processes']
+    queues = kwargs['queues']
     site = kwargs['site']
     prm_conn, proc_conn = multiprocessing.Pipe()
-    proc = multiprocessing.Process(target=proxy_worker, args=(sites_dict[site]['site_q'], proc_conn))
+    proc = multiprocessing.Process(target=proxy_worker, args=(queues[site], proc_conn))
     proc.daemon = True
     proc.start()
-    sites_dict[site]['procs'][proc.pid] = {}
-    sites_dict[site]['procs'][proc.pid]['conn'] = prm_conn
+    processes[site][proc.pid] = {}
+    processes[site][proc.pid]['conn'] = prm_conn
+    processes[site][proc.pid]['proc'] = proc
     return proc.pid
 
 def create_sites_queues(sites_dict):
@@ -145,18 +147,29 @@ def add_to_site_q(**kwargs):
     site_q.put(proxy_name)
     return "%s was added to queue!" % proxy_name
 
+def init_dictionaries(SITES):
+    processes = {}
+    queues = {}
+    pre_queues = {}
+    for site in SITES:
+        processes[site] = {}
+        queues[site] = multiprocessing.Queue()
+        pre_queues[site] = []
+    return processes, queues, pre_queues
+
 
 def start_prm(main_conn):
     this_module = sys.modules[__name__]
-    prmDict = {} # TODO - There should be an init func that returns prmDict with all its keys (sites_dict and so on...)
-    toExit = False
     SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+    processes, queues, pre_queues = init_dictionaries(SITES)
+    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues} # TODO - There should be an init func that returns prmDict with all its keys
+    toExit = False
     prmDict['sites_dict'] = {}
     for site in SITES:
         prmDict['sites_dict'][site] = {}
         prmDict['sites_dict'][site]['procs'] = {}
-    create_sites_queues(prmDict['sites_dict'])
-    prmDict['processes'] = []
+    ###create_sites_queues(prmDict['sites_dict'])
+    ###prmDict['processes'] = []
     q = multiprocessing.Queue()
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
     while True:
