@@ -30,7 +30,7 @@ def create_zmq_connection(address, port, socket_type): # TODO - should be taken 
 
 def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-    socket.send_json(["prm", "active_proxy_workers", ["sites_dict"], {}])
+    socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
     resp = socket.recv_json()
     context = {'active_workers': resp}
     return render(request, "ui/index.html", context)
@@ -40,7 +40,7 @@ def ajax_create_process(request):
     if request.method == "POST" and request.is_ajax():
         site = request.POST['ajaxarg_site']
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "create_process", ["sites_dict"], {"site": site}])
+        socket.send_json(["prm", "create_process", ["processes", "queues"], {"site": site}])
         resp = socket.recv_json()
         #data = auto_reload(socket)
         socket.close()
@@ -50,7 +50,7 @@ def ajax_create_process(request):
 def ajax_auto_reload(request): # TODO - this func should be called from ajax_create_process and not from jquery
     request_site = request.POST['ajaxarg_site']
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-    socket.send_json(["prm", "active_proxy_workers", ["sites_dict"], {}])
+    socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
     resp = socket.recv_json()
     socket.close()
     data = []
@@ -76,7 +76,7 @@ def ajax_add_to_queue(request):
         site = request.POST['ajaxarg_site']
         proxy_name = request.POST['ajaxarg_proxy_name']
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "add_to_site_q", ["sites_dict"], {"site": site, "proxy_name": proxy_name}])
+        socket.send_json(["prm", "add_to_pre_q", ["pre_queues"], {"site": site, "proxy_name": proxy_name}])
         resp = socket.recv_json()
         socket.close()
         return HttpResponse(resp)

@@ -29,19 +29,6 @@ sg = ["sgproxy12", 'sgproxy13', 'sgproxy14']
 
 def proxy_worker(q, conn):
 
-    """"
-    def get_instructions(conn):
-        try:
-            if conn.poll(1):
-                instructions = conn.recv()
-                while instructions == "pause":
-                    if conn.poll(1):
-                        instructions = conn.recv()
-                if instructions == "stop":
-                    raise Exception # TODO - Create sproxy.stop_instruction exception
-        except Exception as e:
-            raise
-    """
 
     def talk_with_prm(conn, message):
         conn.send(message)
@@ -113,12 +100,13 @@ def test():
     return "This Is Test Func"
 
 def active_proxy_workers(**kwargs):
-    sites_dict = kwargs['sites_dict']
+    #sites_dict = kwargs['sites_dict']
+    processes = kwargs['processes']
     active_count = {}
-    for site in sites_dict.keys():
+    for site in processes.keys():
         active_count[site] = {}
-        active_count[site]['active_workers'] = len(sites_dict[site]['procs'].keys())
-        active_count[site]['proxies'] = globals()[site]
+        active_count[site]['active_workers'] = len(processes[site].keys())
+        active_count[site]['proxies'] = globals()[site] # Test purposes only
     return active_count
 
 def create_process(**kwargs):
@@ -139,12 +127,14 @@ def create_sites_queues(sites_dict):
         q = multiprocessing.Queue()
         sites_dict[site]['site_q'] = q
 
-def add_to_site_q(**kwargs):
-    sites_dict = kwargs['sites_dict']
+def add_to_pre_q(**kwargs):
+    #sites_dict = kwargs['sites_dict']
+    pre_queues = kwargs['pre_queues']
     site = kwargs['site']
     proxy_name = kwargs['proxy_name']
-    site_q = sites_dict[site]['site_q']
-    site_q.put(proxy_name)
+    #site_q = sites_dict[site]['site_q']
+    #site_q.put(proxy_name)
+    pre_queues[site].append(proxy_name)
     return "%s was added to queue!" % proxy_name
 
 def init_dictionaries(SITES):
@@ -156,6 +146,12 @@ def init_dictionaries(SITES):
         queues[site] = multiprocessing.Queue()
         pre_queues[site] = []
     return processes, queues, pre_queues
+
+def pre_q_to_q(prmDict, SITES):
+    for site in SITES:
+        for procs in prmDict['processes'][site]:
+            if len(prmDict['pre_queues'][site]) > 0:
+                prmDict['queues'][site].put(prmDict['pre_queues'][site].pop(0))
 
 
 def start_prm(main_conn):
@@ -176,6 +172,7 @@ def start_prm(main_conn):
         while socket.poll(timeout = 10) == 0:
             time.sleep(1)
             multiprocessing.active_children()
+            pre_q_to_q(prmDict, SITES)
             pass
         request = socket.recv_json()
         try:
@@ -194,34 +191,8 @@ def start_prm(main_conn):
             response = str(e) # TODO - respone should contain a "success/fail" field
         finally:
             socket.send_json(response)
-    """"
-    while not toExit:
-        #name = raw_input("Please enter proxy name: ")
-        #proc = multiprocessing.Process(target=proxy_worker, args=(q, conn))
-        instructions = prt_utils.prm_get_instructions(main_conn)
-        if instructions == "start_proc":
-            proc, my_conn = create_process(q)
-            processes.append([proc, my_conn])
-            proc.start()
-        elif instructions == "put in queue":
-            q.put(proc.name)
-        elif instructions == "exit":
-            sys.exit()
-        time.sleep(3)
-    """
+
 
 if __name__ == '__main__':
-    """""
-    toExit = False
-    processes = []
-    q = multiprocessing.Queue()
-    while not toExit:
-        name = raw_input("Please enter proxy name: ")
-        #proc = multiprocessing.Process(target=proxy_worker, args=(q, conn))
-        proc, my_conn = create_process(q)
-        processes.append([proc, my_conn])
-        q.put(name)
-        proc.start()
-        time.sleep(5)
-    """
+
     start_prm(conn)
