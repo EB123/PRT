@@ -5,15 +5,26 @@ import zmq
 
 def worker_get_instructions(conn):
     try:
-        if conn.poll(1):
+        if conn.poll(0.1):
+            notified = False
             instructions = conn.recv()
             while instructions == "pause":
-                if conn.poll(1):
+                if not notified:
+                    message = [["status", "Paused"]]
+                    message_to_prm(conn, message)
+                    notified = True
+                if conn.poll(0.1):
                     instructions = conn.recv()
             if instructions == "stop":
                 raise Exception  # TODO - Create sproxy.stop_instruction exception
     except Exception as e:
         raise
+
+
+def message_to_prm(conn, message):
+    conn.send(message)
+    while not conn.recv() == "OK":
+        pass
 
 
 def prm_get_instructions(conn):

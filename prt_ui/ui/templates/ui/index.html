@@ -77,6 +77,18 @@
   border-width: 5px !important;
 }
 
+.start-Worker {
+    position: relative;
+    box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+.start-Worker:active {
+    top: 2px;
+    }
+.start-Worker.active {
+    top: 2px;
+    box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+
 </style>
 <script type="text/javascript">
 (function($) {
@@ -114,10 +126,19 @@
         });
         return false;
     };
+
+
 }(jQuery));
 </script>
 <script type="text/javascript">
 $(document).ready(function(){
+  $('.start-Worker')
+    .filter(function() {
+        return $(this).attr('data-pressed') == 'Paused';
+     })
+     .toggleClass('active');
+
+
   $("#sites").on("click", ".Add-Worker", function(){
     var lock = $(".Add-Worker").attr("data-locked");
     if (lock == "True") {
@@ -142,6 +163,12 @@ $(document).ready(function(){
         });
 
   });
+  $('.start-Worker').click(function() {
+            var pressed = $(".start-Worker").attr("data-pressed");
+            if (pressed == "False") {
+            $(this).toggleClass('active');
+            }
+  });
 
 });
 </script>
@@ -161,6 +188,13 @@ $(document).ready(function(){
         {% endfor %}
     </select>
 <h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
+<ul>
+    {% for pid, proc_hash in site_hash.workers.items %}
+        <li>{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
+        <button  style="margin-top:0" id="{{pid}}-start" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9658;</button>
+        <button  style="margin-top:0" id="{{pid}}-pause" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9646;&#9646;</button></li>
+    {% endfor %}
+</ul>
 
 
 </div>

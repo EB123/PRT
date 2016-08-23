@@ -57,6 +57,8 @@ def proxy_worker(q, conn):
         logger.root.addHandler(ch)
         return logger
 
+
+
     try:
 
         stopWorker = False
@@ -71,21 +73,29 @@ def proxy_worker(q, conn):
                     prt_utils.worker_get_instructions(conn)
                 except Queue.Empty:
                     pass
+            message = [['status', 'Busy'], ['working_on', p], ['step', 'check_dump_age']]
+            prt_utils.message_to_prm(conn, message)
             logger.info("Got a new proxy to work on: %s" % p)
             proxy = sproxy.sProxy(p)
 
             while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
                 print "Dump is to old.."
                 proxy.dump_cache()
+                message = [['step', 'waiting for cacheDump']]
+                prt_utils.message_to_prm(conn, message)
                 while proxy.check_dump_age() < 0:
+                    prt_utils.worker_get_instructions(conn)
                     print "Checking dump again..."
                     time.sleep(10)
-                    prt_utils.worker_get_instructions(conn)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
                 prt_utils.worker_get_instructions(conn)
+                message = [['step', action]]
+                prt_utils.message_to_prm(conn, message)
                 print "Process-%s: %s" % (os.getpid(),run_next_step(proxy, action))
 
+            message = [['step', 'waiting_for_start']]
+            prt_utils.message_to_prm(conn, message)
             while proxy.check_state() != "Started":
                 print "Process-%s: Waiting for proxy to start..." % os.getpid()
                 time.sleep(5)
@@ -105,8 +115,14 @@ def active_proxy_workers(**kwargs):
     active_count = {}
     for site in processes.keys():
         active_count[site] = {}
+        active_count[site]['workers'] = {}
         active_count[site]['active_workers'] = len(processes[site].keys())
         active_count[site]['proxies'] = globals()[site] # Test purposes only
+        for proc in processes[site].keys():
+            active_count[site]['workers'][proc] = {}
+            active_count[site]['workers'][proc]['status'] = processes[site][proc]['status']
+            active_count[site]['workers'][proc]['working_on'] = processes[site][proc]['working_on']
+            active_count[site]['workers'][proc]['step'] = processes[site][proc]['step']
     return active_count
 
 def create_process(**kwargs):
@@ -120,6 +136,10 @@ def create_process(**kwargs):
     processes[site][proc.pid] = {}
     processes[site][proc.pid]['conn'] = prm_conn
     processes[site][proc.pid]['proc'] = proc
+    processes[site][proc.pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
+    processes[site][proc.pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
+                                                   # is idle
+    processes[site][proc.pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
     return proc.pid
 
 def create_sites_queues(sites_dict):
@@ -173,6 +193,13 @@ def start_prm(main_conn):
             time.sleep(1)
             multiprocessing.active_children()
             pre_q_to_q(prmDict, SITES)
+            for site in processes.keys():
+                for proc in processes[site].keys():
+                    if processes[site][proc]['conn'].poll(0.1):
+                        message = processes[site][proc]['conn'].recv()
+                        for item in message:
+                            processes[site][proc][item[0]] = item[1]
+                        processes[site][proc]['conn'].send("OK")
             pass
         request = socket.recv_json()
         try:

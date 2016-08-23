@@ -64,8 +64,13 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
             data.append("<option value='%s'>%s</option>" % (proxy_name, proxy_name))
         data.append("</select>")
         data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]['active_workers']))
+        data.append("<ul>")
+        for proc in resp[site]['workers']:
+            proc_hash = resp[site]['workers'][proc]
+            data.append("<li>%s - status: %s, currently working on: %s, step: %s</li>" % (proc, proc_hash['status'], proc_hash['working_on'],
+                                                                                                           proc_hash['step']))
+        data.append("</ul>")
         data.append("</div>")
-        #data.append("</ul>")
     return HttpResponse(data)
     #return data
 
