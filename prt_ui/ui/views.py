@@ -65,10 +65,12 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
         data.append("</select>")
         data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]['active_workers']))
         data.append("<ul>")
-        for proc in resp[site]['workers']:
-            proc_hash = resp[site]['workers'][proc]
-            data.append("<li>%s - status: %s, currently working on: %s, step: %s</li>" % (proc, proc_hash['status'], proc_hash['working_on'],
+        for pid in resp[site]['workers']:
+            proc_hash = resp[site]['workers'][pid]
+            data.append("<li>%s - status: %s, currently working on: %s, step: %s" % (pid, proc_hash['status'], proc_hash['working_on'],
                                                                                                            proc_hash['step']))
+            data.append("<button  style='margin-right:2px' id='%s-start' value='%s' data-pressed='%s' class='start-Worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
+            data.append("<button  style='margin-top:0' id='%s-pause' value='%s' data-pressed='%s' class='pause-Worker'>&#9646;&#9646;</button></li>" % (pid, pid, proc_hash['status']))
         data.append("</ul>")
         data.append("</div>")
     return HttpResponse(data)
@@ -85,6 +87,18 @@ def ajax_add_to_queue(request):
         resp = socket.recv_json()
         socket.close()
         return HttpResponse(resp)
+
+
+def ajax_pause_worker(request):
+    if request.method == "POST" and request.is_ajax():
+        site = request.POST['ajaxarg_site']
+        pid = request.POST['ajaxarg_pid']
+        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+        socket.send_json(["prm", "pause_worker", ["processes"], {"site": site, "pid": pid}])
+        resp = socket.recv_json()
+        socket.close()
+        return HttpResponse(resp)
+
 
 """
 def ajax_get_num_proxy_workers(request):

@@ -89,13 +89,25 @@
     box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
 
+.pause-Worker {
+    position: relative;
+    box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+.pause-Worker:active {
+    top: 2px;
+    }
+.pause-Worker.active {
+    top: 2px;
+    box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+
 </style>
 <script type="text/javascript">
 (function($) {
 
     $.ajaxSetup({
         type: 'POST',
-        timeout: 3000,
+        timeout: 30000000,
         error: function() {
             alert("timeout!");
                      }
@@ -127,17 +139,56 @@
         return false;
     };
 
+    $.fn.pauseWorker = function( options, callbackFunc ) {
+        var settings = $.extend({site:null, pid:null}, options);
+        $.post("{% url 'ui:ajax_pause_worker' %}", {ajaxarg_site:settings.site, ajaxarg_pid:settings.pid, csrfmiddlewaretoken:'{{ csrf_token }}'},
+        function(data,status){
+            alert(data);
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                $('#sites').trigger('custReady');
+            });
+
+        })
+        .fail(function(){
+            alert("error " + status );
+        });
+        return false;
+    };
+
 
 }(jQuery));
 </script>
 <script type="text/javascript">
 $(document).ready(function(){
-  $('.start-Worker')
-    .filter(function() {
-        return $(this).attr('data-pressed') == 'Paused';
-     })
-     .toggleClass('active');
 
+
+
+
+  $('#sites').on('custReady', function(){
+    $(this).find('.pause-Worker').filter(function() {
+        return $(this).attr('data-pressed') == 'Paused';
+    })
+    .toggleClass('active');
+
+  });
+
+  $('#sites').trigger('custReady');
+
+  $('#sites').on("click", ".pause-Worker", function(event){
+    var target_button = event.target.id;
+    var pressed = $("#"+target_button).attr("data-pressed");
+    if (pressed == "Paused") {
+        return false;
+    }
+    $("#"+target_button).toggleClass('active');
+    $("#"+target_button).attr("data-pressed", "Paused");
+    var site_name = $("#"+target_button).closest("div").attr("id");
+    var pid = $("#"+target_button).attr("value");
+    $("#"+target_button).pauseWorker({site: site_name, pid: pid}, function(){
+    });
+
+
+  });
 
   $("#sites").on("click", ".Add-Worker", function(){
     var lock = $(".Add-Worker").attr("data-locked");
@@ -191,8 +242,8 @@ $(document).ready(function(){
 <ul>
     {% for pid, proc_hash in site_hash.workers.items %}
         <li>{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
-        <button  style="margin-top:0" id="{{pid}}-start" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9658;</button>
-        <button  style="margin-top:0" id="{{pid}}-pause" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9646;&#9646;</button></li>
+        <button  style="margin-right:2px" id="{{pid}}-start" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9658;</button>
+        <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause-Worker">&#9646;&#9646;</button></li>
     {% endfor %}
 </ul>
 

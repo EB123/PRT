@@ -69,8 +69,8 @@ def proxy_worker(q, conn):
             logger.info("Waiting for input...")
             while not p:
                 try:
-                    p = q.get(True, 1)
                     prt_utils.worker_get_instructions(conn)
+                    p = q.get(True, 0.5)
                 except Queue.Empty:
                     pass
             message = [['status', 'Busy'], ['working_on', p], ['step', 'check_dump_age']]
@@ -133,14 +133,15 @@ def create_process(**kwargs):
     proc = multiprocessing.Process(target=proxy_worker, args=(queues[site], proc_conn))
     proc.daemon = True
     proc.start()
-    processes[site][proc.pid] = {}
-    processes[site][proc.pid]['conn'] = prm_conn
-    processes[site][proc.pid]['proc'] = proc
-    processes[site][proc.pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
-    processes[site][proc.pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
+    pid = str(proc.pid)
+    processes[site][pid] = {}
+    processes[site][pid]['conn'] = prm_conn
+    processes[site][pid]['proc'] = proc
+    processes[site][pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
+    processes[site][pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
                                                    # is idle
-    processes[site][proc.pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
-    return proc.pid
+    processes[site][pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
+    return pid
 
 def create_sites_queues(sites_dict):
     for site in sites_dict.keys():
@@ -172,6 +173,24 @@ def pre_q_to_q(prmDict, SITES):
         for procs in prmDict['processes'][site]:
             if len(prmDict['pre_queues'][site]) > 0:
                 prmDict['queues'][site].put(prmDict['pre_queues'][site].pop(0))
+
+
+def pause_worker(**kwargs):
+    try:
+        processes = kwargs['processes']
+        site = kwargs['site']
+        pid = kwargs['pid']
+        conn = processes[site][pid]['conn']
+        conn.send("pause")
+        while not conn.poll(0.1):
+            pass
+        message = conn.recv()
+        for item in message:
+            processes[site][pid][item[0]] = item[1]
+        return "Process %s is now paused" % pid
+    except Exception as e:
+        print str(e)
+        raise
 
 
 def start_prm(main_conn):
