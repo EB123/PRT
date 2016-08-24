@@ -26,6 +26,26 @@ sg = ["sgproxy12", 'sgproxy13', 'sgproxy14']
 #######################
 
 
+def process_validator(func):
+    def validator(*args, **kwargs):
+        try:
+            processes = kwargs['processes']
+            site = kwargs['site']
+            pid = kwargs['pid']
+            proc = processes[site][pid]['proc']
+            if prt_utils.check_process(proc):
+                return func(*args, **kwargs)
+            else:
+                #print 'This is not a new server!!'
+                #logger.error('Requested process is dead!!') # TODO - implement logger
+                raise Exception # TODO - Create custom exception for this screnario
+        except Exception as e:
+            print "Process is dead!"
+            del processes[site][pid] # This should only happen if the custom exception was raised
+            raise
+    return validator
+
+
 
 def proxy_worker(q, conn):
 
@@ -63,9 +83,9 @@ def proxy_worker(q, conn):
 
         stopWorker = False
         logger = temp_logger()
-        currentStatus = "Idle"
-        currentProxy = None
-        currentStep = None
+        currentStatus = "Idle" # To know the last status when resuming from paused
+        currentProxy = None # Still not sure if this will actually be used
+        currentStep = None # Still not sure if this will actually be used
         while not stopWorker:
             logger.info("I'M UP!")
             p = None
@@ -90,9 +110,10 @@ def proxy_worker(q, conn):
                 message = [['step', 'waiting for cacheDump']]
                 prt_utils.message_to_prm(conn, message)
                 while proxy.check_dump_age() < 0:
-                    prt_utils.worker_get_instructions(conn, currentStatus)
+                    for i in range(10):
+                        prt_utils.worker_get_instructions(conn, currentStatus)
+                        time.sleep(1)
                     print "Checking dump again..."
-                    time.sleep(10)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
                 message = [['step', action]]
@@ -103,9 +124,10 @@ def proxy_worker(q, conn):
             message = [['step', 'waiting_for_start']]
             prt_utils.message_to_prm(conn, message)
             while proxy.check_state() != "Started":
-                print "Process-%s: Waiting for proxy to start..." % os.getpid()
-                time.sleep(5)
-                prt_utils.worker_get_instructions(conn, currentStatus)
+                print "Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name)
+                for i in range(10):
+                    prt_utils.worker_get_instructions(conn, currentStatus)
+                    time.sleep(1)
             proxy.in_rotation()
             stopWorker = talk_with_prm(conn, "toStop?")
 
@@ -174,13 +196,16 @@ def init_dictionaries(SITES):
         pre_queues[site] = []
     return processes, queues, pre_queues
 
-def pre_q_to_q(prmDict, SITES):
+def pre_q_to_q(processes, pre_queues, queues, SITES):
     for site in SITES:
-        for procs in prmDict['processes'][site]:
-            if len(prmDict['pre_queues'][site]) > 0:
-                prmDict['queues'][site].put(prmDict['pre_queues'][site].pop(0))
+        for pid in processes[site]:
+            if len(pre_queues[site]) > 0 and processes[site][pid]['status'] == "Idle":
+                queues[site].put(pre_queues[site].pop(0))
 
 
+#TODO - Create a decorator that will validate that the process still exists (that there's someone on the other side
+#of the pipe
+@process_validator
 def pause_or_resume_worker(**kwargs):
     try:
         processes = kwargs['processes']
@@ -202,6 +227,7 @@ def pause_or_resume_worker(**kwargs):
         raise
 
 
+#TODO - There should be a regular process_checker, in case for some reasone a process dies
 
 def start_prm(main_conn):
     this_module = sys.modules[__name__]
@@ -221,7 +247,7 @@ def start_prm(main_conn):
         while socket.poll(timeout = 10) == 0:
             time.sleep(1)
             multiprocessing.active_children()
-            pre_q_to_q(prmDict, SITES)
+            pre_q_to_q(processes, pre_queues, queues, SITES)
             for site in processes.keys():
                 for proc in processes[site].keys():
                     if processes[site][proc]['conn'].poll(0.1):

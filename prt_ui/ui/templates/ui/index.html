@@ -4,7 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Index</title>
+    <link rel="stylesheet" href="{% static 'ui/js/jquery-ui.min.css' %}" >
     <script src="{% static 'ui/js/jquery.js' %}" ></script>
+    <script src="{% static 'ui/js/jquery-ui.min.js' %}" ></script>
 <style>
 
     .num_workers {
@@ -234,8 +236,18 @@ $(document).ready(function(){
 
   });
 
+    if (1 == 2) {
+    $("#test_dialog").dialog({
 
+        modal:true,
+        buttons: {
+            Ok: function() {
+                $(this).dialog("close");
+            }
+        }
 
+    });
+    }
 
 
 });
@@ -244,6 +256,9 @@ $(document).ready(function(){
 <body>
 
 <p>Welcome to PRT!</p>
+<div id="test_dialog">
+    <p></p>
+</div>
 <div  id="sites">
 <div id="num_workers" class="num_workers">
 {% for site, site_hash in active_workers.items %}

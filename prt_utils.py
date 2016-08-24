@@ -1,7 +1,7 @@
 import time
 import multiprocessing
 import zmq
-
+import sys
 
 def worker_get_instructions(conn, currentStatus):
     try:
@@ -50,6 +50,21 @@ def create_zmq_connection(address, port, socket_type, type):
         socket.bind("tcp://%s:%s" % (address, port))
     return socket
 
+
+
+def check_process(proc):
+    return proc.is_alive()
+
+def process_validator(func):
+    def validator(*args, **kwargs):
+        proc = args[0]
+        if check_process(proc):
+            return func(*args, **kwargs)
+        else:
+            #print 'This is not a new server!!'
+            #logger.error('Requested process is dead!!') # TODO - implement logger
+            raise Exception # TODO - Create custom exception for this screnario
+    return validator
 
 """
 def create_zmqueues_new(address, fe_port, be_port):
