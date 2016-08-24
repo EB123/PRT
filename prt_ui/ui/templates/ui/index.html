@@ -77,26 +77,26 @@
   border-width: 5px !important;
 }
 
-.start-Worker {
+.resume_worker {
     position: relative;
     box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
-.start-Worker:active {
+.resume_worker:active {
     top: 2px;
     }
-.start-Worker.active {
+.resume_worker.active {
     top: 2px;
     box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
 
-.pause-Worker {
+.pause_worker {
     position: relative;
     box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
-.pause-Worker:active {
+.pause_worker:active {
     top: 2px;
     }
-.pause-Worker.active {
+.pause_worker.active {
     top: 2px;
     box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
@@ -107,7 +107,7 @@
 
     $.ajaxSetup({
         type: 'POST',
-        timeout: 30000000,
+        timeout: 30000,
         error: function() {
             alert("timeout!");
                      }
@@ -118,7 +118,10 @@
         $.post("{% url 'ui:ajax_create_process' %}", {ajaxarg_site:settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                $('#sites').trigger('custReady-Pause');
+                $('#sites').trigger('custReady-Resume');
+            });
         })
         .fail(function(){
             alert("error " + status );
@@ -131,7 +134,10 @@
         $.post("{% url 'ui:ajax_add_to_queue' %}", {ajaxarg_site:settings.site, ajaxarg_proxy_name:settings.proxy_name, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'});
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                $('#sites').trigger('custReady-Pause');
+                $('#sites').trigger('custReady-Resume');
+            });
         })
         .fail(function(){
             alert("error " + status );
@@ -139,13 +145,16 @@
         return false;
     };
 
-    $.fn.pauseWorker = function( options, callbackFunc ) {
-        var settings = $.extend({site:null, pid:null}, options);
-        $.post("{% url 'ui:ajax_pause_worker' %}", {ajaxarg_site:settings.site, ajaxarg_pid:settings.pid, csrfmiddlewaretoken:'{{ csrf_token }}'},
+    $.fn.pauseOrResumeWorker = function( options, callbackFunc ) {
+        var settings = $.extend({site:null, pid:null, action:null}, options);
+        $.post("{% url 'ui:ajax_pause_or_resume_worker' %}", {ajaxarg_site:settings.site, ajaxarg_pid:settings.pid,
+                ajaxarg_action: settings.action, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
-                $('#sites').trigger('custReady');
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site,
+                csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                    $('#sites').trigger('custReady-Pause');
+                    $('#sites').trigger('custReady-Resume');
             });
 
         })
@@ -161,30 +170,40 @@
 <script type="text/javascript">
 $(document).ready(function(){
 
+  $('#sites').on('custReady-Resume', function(){
+    $(this).find('.resume_worker').filter(function() {
+        return $(this).attr('data-pressed') != 'Paused';
+    })
+    .toggleClass('active');
+
+  });
 
 
-
-  $('#sites').on('custReady', function(){
-    $(this).find('.pause-Worker').filter(function() {
+  $('#sites').on('custReady-Pause', function(){
+    $(this).find('.pause_worker').filter(function() {
         return $(this).attr('data-pressed') == 'Paused';
     })
     .toggleClass('active');
 
   });
 
-  $('#sites').trigger('custReady');
+  $('#sites').trigger('custReady-Pause');
+  $('#sites').trigger('custReady-Resume');
 
-  $('#sites').on("click", ".pause-Worker", function(event){
+  $('#sites').on("click", ".pause_worker, .resume_worker", function(event){
     var target_button = event.target.id;
     var pressed = $("#"+target_button).attr("data-pressed");
-    if (pressed == "Paused") {
+    var button_class = $("#"+target_button).attr("class").split(" ")[0];
+    if ((button_class == "pause_worker" && pressed == "Paused") ||
+      (button_class == "resume_worker" && pressed != "Paused")) {
         return false;
     }
     $("#"+target_button).toggleClass('active');
     $("#"+target_button).attr("data-pressed", "Paused");
     var site_name = $("#"+target_button).closest("div").attr("id");
     var pid = $("#"+target_button).attr("value");
-    $("#"+target_button).pauseWorker({site: site_name, pid: pid}, function(){
+    var action = $("#"+target_button).attr("class").split(" ")[0];
+    $("#"+target_button).pauseOrResumeWorker({site: site_name, pid: pid, action: action}, function(){
     });
 
 
@@ -214,12 +233,10 @@ $(document).ready(function(){
         });
 
   });
-  $('.start-Worker').click(function() {
-            var pressed = $(".start-Worker").attr("data-pressed");
-            if (pressed == "False") {
-            $(this).toggleClass('active');
-            }
-  });
+
+
+
+
 
 });
 </script>
@@ -242,8 +259,8 @@ $(document).ready(function(){
 <ul>
     {% for pid, proc_hash in site_hash.workers.items %}
         <li>{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
-        <button  style="margin-right:2px" id="{{pid}}-start" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="start-Worker">&#9658;</button>
-        <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause-Worker">&#9646;&#9646;</button></li>
+        <button  style="margin-right:2px" id="{{pid}}-start" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="resume_worker">&#9658;</button>
+        <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause_worker">&#9646;&#9646;</button></li>
     {% endfor %}
 </ul>
 

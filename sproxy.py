@@ -26,17 +26,17 @@ class sProxy:
 
     def stop_proxy(self):
         # TODO - Create stop_proxy func
-        time.sleep(1)
+        time.sleep(10)
         return "Proxy Stopped"
 
     def release_proxy(self):
         # TODO - Create release_proxy func
-        time.sleep(1)
+        time.sleep(10)
         return "Proxy Released"
 
     def start_proxy(self):
         # TODO - Create start_proxy func
-        time.sleep(1)
+        time.sleep(10)
         return "Proxy Started"
 
     def check_proxy_state(self):

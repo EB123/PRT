@@ -63,17 +63,23 @@ def proxy_worker(q, conn):
 
         stopWorker = False
         logger = temp_logger()
+        currentStatus = "Idle"
+        currentProxy = None
+        currentStep = None
         while not stopWorker:
             logger.info("I'M UP!")
             p = None
             logger.info("Waiting for input...")
             while not p:
                 try:
-                    prt_utils.worker_get_instructions(conn)
+                    prt_utils.worker_get_instructions(conn, currentStatus)
                     p = q.get(True, 0.5)
                 except Queue.Empty:
                     pass
-            message = [['status', 'Busy'], ['working_on', p], ['step', 'check_dump_age']]
+            currentStatus = "Busy"
+            currentProxy = p
+            currentStep = "check_dump_age"
+            message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             prt_utils.message_to_prm(conn, message)
             logger.info("Got a new proxy to work on: %s" % p)
             proxy = sproxy.sProxy(p)
@@ -84,14 +90,14 @@ def proxy_worker(q, conn):
                 message = [['step', 'waiting for cacheDump']]
                 prt_utils.message_to_prm(conn, message)
                 while proxy.check_dump_age() < 0:
-                    prt_utils.worker_get_instructions(conn)
+                    prt_utils.worker_get_instructions(conn, currentStatus)
                     print "Checking dump again..."
                     time.sleep(10)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
-                prt_utils.worker_get_instructions(conn)
                 message = [['step', action]]
                 prt_utils.message_to_prm(conn, message)
+                prt_utils.worker_get_instructions(conn, currentStatus)
                 print "Process-%s: %s" % (os.getpid(),run_next_step(proxy, action))
 
             message = [['step', 'waiting_for_start']]
@@ -99,7 +105,7 @@ def proxy_worker(q, conn):
             while proxy.check_state() != "Started":
                 print "Process-%s: Waiting for proxy to start..." % os.getpid()
                 time.sleep(5)
-                prt_utils.worker_get_instructions(conn)
+                prt_utils.worker_get_instructions(conn, currentStatus)
             proxy.in_rotation()
             stopWorker = talk_with_prm(conn, "toStop?")
 
@@ -175,22 +181,26 @@ def pre_q_to_q(prmDict, SITES):
                 prmDict['queues'][site].put(prmDict['pre_queues'][site].pop(0))
 
 
-def pause_worker(**kwargs):
+def pause_or_resume_worker(**kwargs):
     try:
         processes = kwargs['processes']
         site = kwargs['site']
         pid = kwargs['pid']
+        action = kwargs['action']
         conn = processes[site][pid]['conn']
-        conn.send("pause")
+        conn.send(action)
         while not conn.poll(0.1):
             pass
         message = conn.recv()
         for item in message:
             processes[site][pid][item[0]] = item[1]
-        return "Process %s is now paused" % pid
+        #conn.send("OK")
+        return "Process %s is now %sd" % (pid, action)
     except Exception as e:
+        print "Error!"
         print str(e)
         raise
+
 
 
 def start_prm(main_conn):
@@ -218,7 +228,7 @@ def start_prm(main_conn):
                         message = processes[site][proc]['conn'].recv()
                         for item in message:
                             processes[site][proc][item[0]] = item[1]
-                        processes[site][proc]['conn'].send("OK")
+                        #processes[site][proc]['conn'].send("OK")
             pass
         request = socket.recv_json()
         try:

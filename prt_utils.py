@@ -3,7 +3,7 @@ import multiprocessing
 import zmq
 
 
-def worker_get_instructions(conn):
+def worker_get_instructions(conn, currentStatus):
     try:
         if conn.poll(0.1):
             notified = False
@@ -15,6 +15,8 @@ def worker_get_instructions(conn):
                     notified = True
                 if conn.poll(0.1):
                     instructions = conn.recv()
+                    message = [["status", currentStatus]]
+                    message_to_prm(conn, message)
             if instructions == "stop":
                 raise Exception  # TODO - Create sproxy.stop_instruction exception
     except Exception as e:
@@ -23,8 +25,11 @@ def worker_get_instructions(conn):
 
 def message_to_prm(conn, message):
     conn.send(message)
+    # TODO - Consider using 2 duplex pipes one for incoming (that will receive the "OK") and for outgoing
+    """
     while not conn.recv() == "OK":
         pass
+    """
 
 
 def prm_get_instructions(conn):
