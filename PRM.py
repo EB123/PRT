@@ -15,13 +15,13 @@ import logging
 
 SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
 
-ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27']
-ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12']
-ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27']
-ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07']
-lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27']
+ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
+ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12','ny4aproxy13', 'ny4aproxy14', 'ny4aproxy15', 'ny4aproxy16']
+ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27', 'ams2proxy28', 'ams2proxy29', 'ams2proxy30']
+ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07', 'ams2proxy08', 'ams2proxy09']
+lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27', 'laxproxy28', 'laxproxy29']
 lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
-sg = ["sgproxy12", 'sgproxy13', 'sgproxy14']
+sg = ["sgproxy12", 'sgproxy13', 'sgproxy14', 'sgproxy15']
 
 #######################
 
@@ -180,11 +180,15 @@ def add_to_pre_q(**kwargs):
     #sites_dict = kwargs['sites_dict']
     pre_queues = kwargs['pre_queues']
     site = kwargs['site']
-    proxy_name = kwargs['proxy_name']
+    proxies = kwargs['proxies']
     #site_q = sites_dict[site]['site_q']
     #site_q.put(proxy_name)
-    pre_queues[site].append(proxy_name)
-    return "%s was added to queue!" % proxy_name
+    wasAdded = []
+    for proxy in proxies:
+        if not proxy in pre_queues[site]:
+            pre_queues[site].append(proxy)
+            wasAdded.append(proxy)
+    return "%s was added to queue!" % wasAdded
 
 def init_dictionaries(SITES):
     processes = {}

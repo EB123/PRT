@@ -9,6 +9,10 @@
     <script src="{% static 'ui/js/jquery-ui.min.js' %}" ></script>
 <style>
 
+    #addToQueue {
+
+    }
+
     .num_workers {
     -moz-column-count: 2;
     -moz-column-gap: 30px;
@@ -183,7 +187,7 @@
         })
         .fail(function(){
             alert("error " + status );
-        });
+        },"json");
         return false;
     };
 
@@ -221,6 +225,7 @@
             });
         });
     };
+
 
 
 }(jQuery));
@@ -293,6 +298,40 @@ $(document).ready(function(){
   });
 
 
+  $("#sites").on("click", ".Add-To-Q2", function(event){
+
+    var target_button = event.target.id;
+    var site_name = $("#"+target_button).closest("div").attr("id");
+     $("#addToQueue-"+site_name).dialog({
+        height: 'auto',
+        buttons: {
+            Submit: function() {
+                var myCheckBoxesArray = new Array();
+                $("input:checkbox[name='myCheckBoxes']:checked").each(function() {
+                    myCheckBoxesArray.push($(this).val());
+                });
+                if (myCheckBoxesArray.length == 0) {
+                    alert("You must choose at least one proxy!");
+                    return false;
+                }
+                $(this).addToQ({site: site_name, proxy_name:JSON.stringify(myCheckBoxesArray)}, function(){
+                    $(this).removeClass('ui-state-focus');
+                    });
+
+                $(this).dialog("close");
+                },
+            Cancel: function() {
+                $(this).dialog("close");
+            }
+        },
+         close: function() {
+            $("input:reset").trigger("click");
+            $("#addToQueue-"+site_name)[0].reset();
+        }
+     });
+
+  });
+
    $(".show_queues").on("click", function() {
         $("#queues").load("{% url 'ui:ajax_get_preQs_status' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
             $('#queues').dialog({
@@ -309,6 +348,25 @@ $(document).ready(function(){
    });
 
 
+    $(document).on("change", ".selectAll", function(event) {
+        var target_button = event.target.id;
+        checkbox_site = $("#"+target_button).attr("value");
+        alert($("#"+target_button).attr("value"));
+        var site_name = $("#"+target_button).siblings("div").filter(function() {
+            return $(this).attr("id") == "sites";
+        });
+        alert(site_name.id);
+        var form = $("#addToQueue-"+site_name);
+        form.find("checkbox").each(function() {
+            this.checked = true;
+        });
+
+
+
+    });
+
+
+
     if (1 == 2) {
     $("#test_dialog").dialog({
 
@@ -321,6 +379,8 @@ $(document).ready(function(){
 
     });
     }
+
+
 
 
 });
@@ -339,12 +399,15 @@ $(document).ready(function(){
 {% for site, site_hash in active_workers.items %}
 <div id="{{site}}" class="enjoy-css2">
     <button  style="margin-top:0" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
-    <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q"> Add To Queue   </button>
-    <select name="proxies" id="proxies">
+    <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q2"> Add To Queue   </button>
+    <form id="addToQueue-{{site}}" value="{{site}}" style="display:none">
+            <input type="checkbox" name="selectAll" class="selectAll" id="selectAll-{{site}}" value="{{site}}">Select All</input><br>
         {% for proxy_name in site_hash.proxies %}
-            <option value="{{proxy_name}}">{{proxy_name}}</option>
+            <input type="checkbox" name="myCheckBoxes" id="myCheckBoxes-{{proxy_name}}" class="myCheckBoxes" value="{{proxy_name}}">{{proxy_name}}</input><br>
         {% endfor %}
-    </select>
+            <input type='reset' style="display:none"/>
+            </fieldset>
+    </form>
 <h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
 <ul>
     {% for pid, proc_hash in site_hash.workers.items %}

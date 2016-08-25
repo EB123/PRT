@@ -1,7 +1,7 @@
 from django.shortcuts import render
 import zmq
 from django.http import  HttpResponse
-
+import json
 
 #address = "127.0.0.1"
 #port = "4141"
@@ -58,11 +58,13 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
     for site in resp:
         data.append("<div id='%s' class='enjoy-css2'>" % site)
         data.append("<button  style='margin-top:0' id='addWorker-%s' data-locked='False' class='Add-Worker'> Add Worker   </button>" % site)
-        data.append("<button  style='margin-top:0' id='addToQ-%s' data-locked='False' class='Add-To-Q'> Add To Queue   </button>" % site)
-        data.append("<select name='proxies' id='proxies'>")
+        data.append("<button  style='margin-top:0' id='addToQ-%s' data-locked='False' class='Add-To-Q2'> Add To Queue   </button>" % site)
+        data.append("<form id='addToQueue-%s' value='%s' style='display:none'>" % (site, site))
+        data.append("<fieldset>")
         for proxy_name in resp[site]['proxies']:
-            data.append("<option value='%s'>%s</option>" % (proxy_name, proxy_name))
-        data.append("</select>")
+            data.append("<input type='checkbox' name='myCheckBoxes' id='myCheckBoxes-%s' value='%s'>%s</input><br>" % (proxy_name, proxy_name, proxy_name))
+        data.append("</fieldset>")
+        data.append("</form>")
         data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]['active_workers']))
         data.append("<ul>")
         for pid in resp[site]['workers']:
@@ -80,10 +82,11 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
 
 def ajax_add_to_queue(request):
     if request.method == "POST" and request.is_ajax():
+        #print request.POST['ajaxart_prox_name']
         site = request.POST['ajaxarg_site']
-        proxy_name = request.POST['ajaxarg_proxy_name']
+        proxies = json.loads(request.POST['ajaxarg_proxy_name'])
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "add_to_pre_q", ["pre_queues"], {"site": site, "proxy_name": proxy_name}])
+        socket.send_json(["prm", "add_to_pre_q", ["pre_queues"], {"site": site, "proxies": proxies}])
         resp = socket.recv_json()
         socket.close()
         return HttpResponse(resp)
