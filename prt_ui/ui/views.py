@@ -61,8 +61,9 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
         data.append("<button  style='margin-top:0' id='addToQ-%s' data-locked='False' class='Add-To-Q2'> Add To Queue   </button>" % site)
         data.append("<form id='addToQueue-%s' value='%s' style='display:none'>" % (site, site))
         data.append("<fieldset>")
+        data.append(" <input type='checkbox' name='selectAll' class='selectAll' id='selectAll-%s' value='%s'>Select All</input><br>" % (site, site))
         for proxy_name in resp[site]['proxies']:
-            data.append("<input type='checkbox' name='myCheckBoxes' id='myCheckBoxes-%s' value='%s'>%s</input><br>" % (proxy_name, proxy_name, proxy_name))
+            data.append("<input type='checkbox' name='myCheckBoxes' id='myCheckBoxes-%s' class='myCheckBoxes' value='%s'>%s</input><br>" % (proxy_name, proxy_name, proxy_name))
         data.append("</fieldset>")
         data.append("</form>")
         data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]['active_workers']))

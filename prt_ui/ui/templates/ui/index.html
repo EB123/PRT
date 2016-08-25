@@ -324,9 +324,14 @@ $(document).ready(function(){
                 $(this).dialog("close");
             }
         },
-         close: function() {
+         beforeClose: function() {
             $("input:reset").trigger("click");
+            $(this).find("checkbox").filter(function() {
+                return $(this).attr("class") == "selectAll";
+            })
+            .prop("checked", false);
             $("#addToQueue-"+site_name)[0].reset();
+            $(this).dialog("destroy");
         }
      });
 
@@ -350,19 +355,12 @@ $(document).ready(function(){
 
     $(document).on("change", ".selectAll", function(event) {
         var target_button = event.target.id;
-        checkbox_site = $("#"+target_button).attr("value");
-        alert($("#"+target_button).attr("value"));
-        var site_name = $("#"+target_button).siblings("div").filter(function() {
-            return $(this).attr("id") == "sites";
+        var form = $("#"+target_button).closest("form")
+        var status = $("#"+target_button).prop("checked");
+        alert(status);
+        form.find(".myCheckBoxes").each(function() {
+            $(this).prop('checked', status);
         });
-        alert(site_name.id);
-        var form = $("#addToQueue-"+site_name);
-        form.find("checkbox").each(function() {
-            this.checked = true;
-        });
-
-
-
     });
 
 
@@ -401,6 +399,7 @@ $(document).ready(function(){
     <button  style="margin-top:0" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
     <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q2"> Add To Queue   </button>
     <form id="addToQueue-{{site}}" value="{{site}}" style="display:none">
+            <fieldset>
             <input type="checkbox" name="selectAll" class="selectAll" id="selectAll-{{site}}" value="{{site}}">Select All</input><br>
         {% for proxy_name in site_hash.proxies %}
             <input type="checkbox" name="myCheckBoxes" id="myCheckBoxes-{{proxy_name}}" class="myCheckBoxes" value="{{proxy_name}}">{{proxy_name}}</input><br>
