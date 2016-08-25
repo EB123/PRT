@@ -10,13 +10,13 @@ from django.http import  HttpResponse
 
 SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
 
-ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27']
-ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12']
-ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27']
-ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07']
-lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27']
+ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
+ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12','ny4aproxy13', 'ny4aproxy14', 'ny4aproxy15', 'ny4aproxy16']
+ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27', 'ams2proxy28', 'ams2proxy29', 'ams2proxy30']
+ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07', 'ams2proxy08', 'ams2proxy09']
+lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27', 'laxproxy28', 'laxproxy29']
 lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
-sg = ["sgproxy12", 'sgproxy13', 'sgproxy14']
+sg = ["sgproxy12", 'sgproxy13', 'sgproxy14', 'sgproxy15']
 
 #######################
 
@@ -100,6 +100,23 @@ def ajax_pause_or_resume_worker(request):
         socket.close()
         return HttpResponse(resp)
 
+
+def ajax_get_preQs_status(request):
+    if request.method == "POST" and request.is_ajax():
+        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+        socket.send_json(["prm", "get_preQs_status", ["pre_queues"], {}])
+        resp = socket.recv_json()
+        socket.close()
+        data = []
+        for site in resp:
+            data.append("<div id='%s-queue' class='enjoy-css3'>" % site)
+            data.append("<p>%s queues</p>" % site)
+            data.append("<ul>")
+            for proxy in resp[site]:
+                data.append("<li>%s</li>" % proxy)
+            data.append("</ul>")
+            data.append("</div>")
+        return HttpResponse(data)
 
 
 """

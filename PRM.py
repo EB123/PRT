@@ -227,7 +227,12 @@ def pause_or_resume_worker(**kwargs):
         raise
 
 
+def get_preQs_status(**kwargs):
+    return kwargs['pre_queues']
+
+
 #TODO - There should be a regular process_checker, in case for some reasone a process dies
+
 
 def start_prm(main_conn):
     this_module = sys.modules[__name__]

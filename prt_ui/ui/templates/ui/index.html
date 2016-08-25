@@ -25,8 +25,48 @@
     overflow-y: auto;
     overflow-x: hidden;
     margin-left: 2vw;
-
     }
+
+    .queues {
+    -moz-column-count: 2;
+    -moz-column-gap: 30px;
+    -webkit-column-count: 2;
+    -webkit-column-gap: 30px;
+    column-count: 2;
+    column-gap: 2vw;
+        -webkit-column-fill: auto; /* Chrome, Safari, Opera */
+    -moz-column-fill: auto; /* Firefox */
+    column-fill: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-left: 2vw;
+    }
+
+    .enjoy-css3 {
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  float: right;
+
+  top: 0;
+  right: 5%;
+  bottom: 0;
+  left: 0;
+  margin: 2% 0 2% 5%;
+  overflow: scroll;
+  border: 2px solid rgba(0,150,255,0.91);
+  font: normal 17px/2 "Times New Roman", Times, serif;
+  color: rgba(5,0,0,1);
+    text-indent: 13px;
+  text-align: justify;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+        width: 85%;
+    height: 14vh;
+    overflow: auto !important;
+    border-style: solid;
+    border-width: 5px !important;
+}
 
     .enjoy-css2 {
   -webkit-box-sizing: content-box;
@@ -167,6 +207,22 @@
     };
 
 
+    $.fn.getQsStatus = function( options, callbackFunc ) {
+        $("#queuess").load("{% url 'ui:ajax_get_preQs_status' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $('#queues').dialog({
+                modal:true,
+                height: 100,
+                width: 1000,
+                buttons: {
+                    Ok: function() {
+                    $(this).dialog("close");
+                    }
+                }
+            });
+        });
+    };
+
+
 }(jQuery));
 </script>
 <script type="text/javascript">
@@ -236,6 +292,23 @@ $(document).ready(function(){
 
   });
 
+
+   $(".show_queues").on("click", function() {
+        $("#queues").load("{% url 'ui:ajax_get_preQs_status' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $('#queues').dialog({
+                modal:true,
+                width: 1200,
+                height: 850,
+                buttons: {
+                    Ok: function() {
+                    $(this).dialog("close");
+                    }
+                }
+            });
+        });
+   });
+
+
     if (1 == 2) {
     $("#test_dialog").dialog({
 
@@ -256,8 +329,10 @@ $(document).ready(function(){
 <body>
 
 <p>Welcome to PRT!</p>
+<button class="show_queues"> Show Queues</button>
+<div id="queues" class="queues" >
+</div>
 <div id="test_dialog">
-    <p></p>
 </div>
 <div  id="sites">
 <div id="num_workers" class="num_workers">
