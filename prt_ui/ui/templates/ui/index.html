@@ -167,6 +167,7 @@
             $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                 $('#sites').trigger('custReady-Pause');
                 $('#sites').trigger('custReady-Resume');
+                        $('button').prop("disabled", false);
             });
         })
         .fail(function(){
@@ -183,6 +184,7 @@
             $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                 $('#sites').trigger('custReady-Pause');
                 $('#sites').trigger('custReady-Resume');
+                        $('button').prop("disabled", false);
             });
         })
         .fail(function(){
@@ -201,6 +203,7 @@
                 csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                     $('#sites').trigger('custReady-Pause');
                     $('#sites').trigger('custReady-Resume');
+                            $('button').prop("disabled", false);
             });
 
         })
@@ -232,6 +235,16 @@
 </script>
 <script type="text/javascript">
 $(document).ready(function(){
+
+  $(document).ajaxStart(function() {
+    $('button').prop("disabled", true);
+  });
+  $(document).ajaxComplete(function() {
+
+  });
+
+
+
 
   $('#sites').on('custReady-Resume', function(){
     $(this).find('.resume_worker').filter(function() {
@@ -347,6 +360,9 @@ $(document).ready(function(){
                     Ok: function() {
                     $(this).dialog("close");
                     }
+                },
+                beforeClose: function() {
+                    $('button').prop("disabled", false);
                 }
             });
         });
