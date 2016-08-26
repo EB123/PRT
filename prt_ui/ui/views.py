@@ -56,7 +56,7 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
     #data.append("<ul>")
     for site in resp:
         data.append("<div id='%s' class='enjoy-css2'>" % site)
-        data.append("<button  style='margin-top:0' id='addWorker-%s' data-locked='False' class='Add-Worker'> Add Worker   </button>" % site)
+        data.append("<button  style='margin-right:6px' id='addWorker-%s' data-locked='False' class='Add-Worker'> Add Worker   </button>" % site)
         data.append("<button  style='margin-top:0' id='addToQ-%s' data-locked='False' class='Add-To-Q2'> Add To Queue   </button>" % site)
         data.append("<form id='addToQueue-%s' value='%s' style='display:none'>" % (site, site))
         data.append("<fieldset>")
@@ -82,7 +82,6 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
 
 def ajax_add_to_queue(request):
     if request.method == "POST" and request.is_ajax():
-        #print request.POST['ajaxart_prox_name']
         site = request.POST['ajaxarg_site']
         proxies = json.loads(request.POST['ajaxarg_proxy_name'])
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
@@ -147,18 +146,4 @@ def ajax_start_workers_for_release(request):
         socket.close()
         return HttpResponse(json.dumps(resp))
 
-"""
-def ajax_get_num_proxy_workers(request):
-
-    if request.method == "POST" and request.is_ajax():
-"""
-
-
-
-
-"""
-def send_ajax_from_ui(request):
-    if request.method == "POST" and request.is_ajax():
-        create_zmq_connection(address, port)
-"""
 

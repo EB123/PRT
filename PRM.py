@@ -96,7 +96,7 @@ def proxy_worker(q, conn):
             while not p:
                 try:
                     prt_utils.worker_get_instructions(conn, currentStatus)
-                    p = q.get(True, 0.5)
+                    p = q.get(True, 0.1)
                 except Queue.Empty:
                     pass
             currentStatus = "Busy"

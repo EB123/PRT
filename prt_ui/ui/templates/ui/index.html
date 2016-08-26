@@ -28,7 +28,6 @@
     width: 95vw;
     overflow-y: auto;
     overflow-x: hidden;
-    margin-left: 2vw;
     }
 
     .queues {
@@ -488,7 +487,7 @@ $(document).ready(function(){
 <div id="num_workers" class="num_workers">
 {% for site, site_hash in active_workers.items %}
 <div id="{{site}}" class="enjoy-css2">
-    <button  style="margin-top:0" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
+    <button  style="margin-right:3px" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
     <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q2"> Add To Queue   </button>
     <form id="addToQueue-{{site}}" value="{{site}}" style="display:none">
             <fieldset>
