@@ -46,6 +46,33 @@
     margin-left: 2vw;
     }
 
+
+    .enjoy-css4 {
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  float: right;
+
+  top: 0;
+  right: 5%;
+  bottom: 0;
+  left: 0;
+  margin: 2% 0 2% 5%;
+  overflow: scroll;
+  border: 0.5px solid rgba(0,150,255,0.91);
+  font: normal 17px/2 "Times New Roman", Times, serif;
+    text-indent: 13px;
+  text-align: justify;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+        width: 85%;
+    height: 8vh;
+    overflow: auto !important;
+    border-style: solid;
+}
+
+
+
     .enjoy-css3 {
   -webkit-box-sizing: content-box;
   -moz-box-sizing: content-box;
@@ -164,7 +191,7 @@
         $.post("{% url 'ui:ajax_create_process' %}", {ajaxarg_site:settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", { csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                 $('#sites').trigger('custReady-Pause');
                 $('#sites').trigger('custReady-Resume');
                         $('button').prop("disabled", false);
@@ -181,7 +208,7 @@
         $.post("{% url 'ui:ajax_add_to_queue' %}", {ajaxarg_site:settings.site, ajaxarg_proxy_name:settings.proxy_name, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                 $('#sites').trigger('custReady-Pause');
                 $('#sites').trigger('custReady-Resume');
                         $('button').prop("disabled", false);
@@ -199,7 +226,7 @@
                 ajaxarg_action: settings.action, csrfmiddlewaretoken:'{{ csrf_token }}'},
         function(data,status){
             alert(data);
-            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {ajaxarg_site: settings.site,
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {
                 csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
                     $('#sites').trigger('custReady-Pause');
                     $('#sites').trigger('custReady-Resume');
@@ -229,6 +256,24 @@
         });
     };
 
+
+    $.fn.startWorkersForRelease = function( options, callbackFunc ) {
+        var settings = $.extend({numOfWorkers:null}, options);
+        $.post("{% url 'ui:ajax_start_workers_for_release' %}", {ajaxarg_numOfWorkers:settings.numOfWorkers, csrfmiddlewaretoken:'{{ csrf_token }}'},
+        function(data,status){
+            alert("The following processes were created: " + data);
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                $('.workersForRelease').prop('data-disabledInf', "True");
+                $('#sites').trigger('custReady-Pause');
+                $('#sites').trigger('custReady-Resume');
+                $('button').prop("disabled", false);
+            });
+        })
+        .fail(function(){
+            alert("error " + status );
+        });
+        return false;
+    };
 
 
 }(jQuery));
@@ -380,19 +425,45 @@ $(document).ready(function(){
     });
 
 
+   $(".workersForRelease").on("click", function() {
+        $("#workersForRelease").load("{% url 'ui:ajax_get_default_num_workers' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $('#workersForRelease').dialog({
+                modal:true,
+                width: 1200,
+                height: 550,
+                 buttons: {
+                    Submit: function() {
+                        var numOfWorkers = new Array();
+                        var isValid = true;
+                        $("input:text[name='numOfWorkers']").each(function() {
+                            var key = $(this).attr("data-siteName");
+                            var val = $(this).val();
+                            if ($.isNumeric(val) == false) {
+                                alert("Value for " + key + " is invalid!");
+                                isValid = false;
+                                return false;
+                            }
+                            numOfWorkers.push([key, val]);
+                        });
+                        if (isValid == false) {
+                            return false;
+                        }
+                        $(this).startWorkersForRelease({ 'numOfWorkers':JSON.stringify(numOfWorkers)}, function(){
+                            $(this).removeClass('ui-state-focus');
+                        });
 
-    if (1 == 2) {
-    $("#test_dialog").dialog({
-
-        modal:true,
-        buttons: {
-            Ok: function() {
-                $(this).dialog("close");
-            }
-        }
-
-    });
-    }
+                        $(this).dialog("close");
+                    },
+                    Cancel: function() {
+                        $(this).dialog("close");
+                    }
+                 },
+                    beforeClose: function() {
+                        $(this).dialog("destroy");
+                }
+            });
+        });
+   });
 
 
 
@@ -402,8 +473,13 @@ $(document).ready(function(){
 </head>
 <body>
 
+<div id="workersForRelease" style="display:none" class="queues">
+</div>
+
+
+
 <p>Welcome to PRT!</p>
-<button class="show_queues"> Show Queues</button>
+<button class="show_queues" style="margin-right:2px"> Show Queues</button><button class="workersForRelease" data-disabledInf="True"> Start Multiple Workers</button>
 <div id="queues" class="queues" >
 </div>
 <div id="test_dialog">

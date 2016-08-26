@@ -23,6 +23,9 @@ lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27', 'laxproxy28', 'laxproxy29']
 lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
 sg = ["sgproxy12", 'sgproxy13', 'sgproxy14', 'sgproxy15']
 
+basedir = os.getcwd()
+workers_conf_file = os.path.join(basedir, 'workers_for_release.conf')
+
 #######################
 
 
@@ -233,6 +236,35 @@ def pause_or_resume_worker(**kwargs):
 
 def get_preQs_status(**kwargs):
     return kwargs['pre_queues']
+
+
+def get_default_num_workers(**kwargs):
+    conf = prt_utils.get_conf_from_file(workers_conf_file)
+    num_workers_for_release = {}
+    for site in conf:
+        num_workers_for_release[site] = conf[site]['num_of_workers']
+    return num_workers_for_release
+
+
+
+def start_workers_for_release(**kwargs):
+    numOfWorkers = kwargs['numOfWorkers']
+    processes = kwargs['processes']
+    queues = kwargs['queues']
+    response = {}
+    for item in numOfWorkers:
+        site = item[0]
+        numWorkersInSite = item[1]
+        response[site] = []
+        for i in range(int(numWorkersInSite)):
+            newKwargs = {}
+            newKwargs['processes'] = processes
+            newKwargs['queues'] = queues
+            newKwargs['site'] = site
+            pid = create_process(**newKwargs)
+            response[site].append(pid)
+    return response
+
 
 
 #TODO - There should be a regular process_checker, in case for some reasone a process dies

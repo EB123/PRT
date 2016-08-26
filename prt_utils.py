@@ -2,6 +2,7 @@ import time
 import multiprocessing
 import zmq
 import sys
+import ConfigParser
 
 def worker_get_instructions(conn, currentStatus):
     try:
@@ -65,6 +66,21 @@ def process_validator(func):
             #logger.error('Requested process is dead!!') # TODO - implement logger
             raise Exception # TODO - Create custom exception for this screnario
     return validator
+
+
+def get_conf_from_file(conf_file):
+
+    conf = {}
+    config = ConfigParser.RawConfigParser()
+    config.read(conf_file)
+    sections = config.sections()
+    for section in sections:
+        conf[section] = {}
+        params = config.items(section)
+        for param in params:
+            conf[section][param[0]] = param[1]
+    return conf
+
 
 """
 def create_zmqueues_new(address, fe_port, be_port):

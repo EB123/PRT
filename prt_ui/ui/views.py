@@ -32,7 +32,7 @@ def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
     resp = socket.recv_json()
-    context = {'active_workers': resp}
+    context = {'active_workers': resp, 'sites': SITES}
     return render(request, "ui/index.html", context)
 
 
@@ -48,7 +48,6 @@ def ajax_create_process(request):
         return HttpResponse(resp)
 
 def ajax_auto_reload(request): # TODO - this func should be called from ajax_create_process and not from jquery
-    request_site = request.POST['ajaxarg_site']
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
     resp = socket.recv_json()
@@ -122,6 +121,31 @@ def ajax_get_preQs_status(request):
             data.append("</div>")
         return HttpResponse(data)
 
+
+def ajax_get_default_num_workers(request):
+    if request.method =="POST" and request.is_ajax():
+        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+        socket.send_json(["prm", "get_default_num_workers", [], {}])
+        resp = socket.recv_json()
+        socket.close()
+        data = []
+        for site in resp:
+            print site
+            print resp[site]
+            data.append("<div class='enjoy-css4'>")
+            data.append("<p>%s: <input type='text' name='numOfWorkers' data-siteName='%s' value='%s'/></p>" % (site, site, resp[site]))
+            data.append("</div>")
+        return HttpResponse(data)
+
+
+def ajax_start_workers_for_release(request):
+    if request.method == "POST" and request.is_ajax():
+        numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
+        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+        socket.send_json(["prm", "start_workers_for_release", ["processes", "queues"], {'numOfWorkers': numOfWorkers}])
+        resp = socket.recv_json()
+        socket.close()
+        return HttpResponse(json.dumps(resp))
 
 """
 def ajax_get_num_proxy_workers(request):
