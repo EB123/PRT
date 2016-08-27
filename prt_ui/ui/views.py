@@ -1,6 +1,6 @@
 from django.shortcuts import render
 import zmq
-from django.http import  HttpResponse
+from django.http import  HttpResponse, HttpResponseServerError
 import json
 
 #address = "127.0.0.1"
@@ -71,7 +71,7 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
             proc_hash = resp[site]['workers'][pid]
             data.append("<li>%s - status: %s, currently working on: %s, step: %s" % (pid, proc_hash['status'], proc_hash['working_on'],
                                                                                                            proc_hash['step']))
-            data.append("<button  style='margin-right:2px' id='%s-start' value='%s' data-pressed='%s' class='resume_worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
+            data.append("<button  style='margin-right:4px; margin-left:6px' id='%s-start' value='%s' data-pressed='%s' class='resume_worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
             data.append("<button  style='margin-top:0' id='%s-pause' value='%s' data-pressed='%s' class='pause_worker'>&#9646;&#9646;</button></li>" % (pid, pid, proc_hash['status']))
         data.append("</ul>")
         data.append("</div>")
@@ -122,28 +122,32 @@ def ajax_get_preQs_status(request):
 
 
 def ajax_get_default_num_workers(request):
-    if request.method =="POST" and request.is_ajax():
-        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "get_default_num_workers", [], {}])
-        resp = socket.recv_json()
-        socket.close()
-        data = []
-        for site in resp:
-            print site
-            print resp[site]
-            data.append("<div class='enjoy-css4'>")
-            data.append("<p>%s: <input type='text' name='numOfWorkers' data-siteName='%s' value='%s'/></p>" % (site, site, resp[site]))
-            data.append("</div>")
-        return HttpResponse(data)
+    try:
+        if request.method =="POST" and request.is_ajax():
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["prm", "get_default_num_workers", [], {}])
+            resp = socket.recv_json()
+            socket.close()
+            data = []
+            for site in resp:
+                data.append("<div class='enjoy-css4'>")
+                data.append("<p>%s: <input type='text' name='numOfWorkers' data-siteName='%s' value='%s'/></p>" % (site, site, resp[site]))
+                data.append("</div>")
+            return HttpResponse(data)
+    except Exception:
+        return HttpResponseServerError(resp)
 
 
 def ajax_start_workers_for_release(request):
-    if request.method == "POST" and request.is_ajax():
-        numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
-        socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "start_workers_for_release", ["processes", "queues"], {'numOfWorkers': numOfWorkers}])
-        resp = socket.recv_json()
-        socket.close()
-        return HttpResponse(json.dumps(resp))
+    try:
+        if request.method == "POST" and request.is_ajax():
+            numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues"], {'numOfWorkers': numOfWorkers}])
+            resp = socket.recv_json()
+            socket.close()
+            return HttpResponse(json.dumps(resp))
+    except Exception:
+        return HttpResponseServerError(resp)
 
 

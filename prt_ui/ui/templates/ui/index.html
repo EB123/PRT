@@ -177,6 +177,10 @@
 <script type="text/javascript">
 (function($) {
 
+    $( window ).on('beforeunload', function() {
+        $('button').prop('disabled', true);
+    });
+
     $.ajaxSetup({
         type: 'POST',
         timeout: 30000,
@@ -269,16 +273,20 @@
             });
         })
         .fail(function(){
-            alert("error " + status );
+            alert("error" + status);
         });
         return false;
     };
 
 
+
+
 }(jQuery));
 </script>
 <script type="text/javascript">
+
 $(document).ready(function(){
+
 
   $(document).ajaxStart(function() {
     $('button').prop("disabled", true);
@@ -459,12 +467,18 @@ $(document).ready(function(){
                  },
                     beforeClose: function() {
                         $(this).dialog("destroy");
+                        $('button').prop("disabled", false);
                 }
             });
         });
    });
 
 
+$(document).ajaxError(function(event, xhr, options) {
+            alert(xhr.responseText);
+            alert(event);
+            alert(options);
+            });
 
 
 });
@@ -478,7 +492,9 @@ $(document).ready(function(){
 
 
 <p>Welcome to PRT!</p>
-<button class="show_queues" style="margin-right:2px"> Show Queues</button><button class="workersForRelease" data-disabledInf="True"> Start Multiple Workers</button>
+<button class="show_queues" style="margin-right:2px"> Show Queues</button>
+<button class="workersForRelease" data-disabledInf="True"> Start Multiple Workers</button>
+<button class="panicPause" style="float:right">Panic Pause!</button>
 <div id="queues" class="queues" >
 </div>
 <div id="test_dialog">

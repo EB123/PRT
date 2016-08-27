@@ -8,6 +8,7 @@ import queue_device
 import zmq
 import os
 import logging
+import threading
 
 
 
@@ -239,10 +240,10 @@ def get_preQs_status(**kwargs):
 
 
 def get_default_num_workers(**kwargs):
-    conf = prt_utils.get_conf_from_file(workers_conf_file)
+    conf = prt_utils.get_conf_from_file(workers_conf_file) # TODO - Conf file should only be read once at the start.
     num_workers_for_release = {}
     for site in conf:
-        num_workers_for_release[site] = conf[site]['num_of_workers']
+        num_workers_for_release[sit] = conf[site]['num_of_workers']
     return num_workers_for_release
 
 
@@ -266,6 +267,19 @@ def start_workers_for_release(**kwargs):
     return response
 
 
+def get_workers_status(processes, lock):
+    while True:
+        for site in processes.keys():
+            for proc in processes[site].keys():
+                if processes[site][proc]['conn'].poll(0.1):
+                    message = processes[site][proc]['conn'].recv()
+                    for item in message:
+                        lock.acquire()
+                        processes[site][proc][item[0]] = item[1]
+                        lock.release()
+                    #processes[site][proc]['conn'].send("OK")
+        time.sleep(5)
+
 
 #TODO - There should be a regular process_checker, in case for some reasone a process dies
 
@@ -283,12 +297,18 @@ def start_prm(main_conn):
     ###create_sites_queues(prmDict['sites_dict'])
     ###prmDict['processes'] = []
     q = multiprocessing.Queue()
+    lock = threading.Lock()
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
+    msg_checker = threading.Thread(target=get_workers_status, args=(processes, lock))
+    msg_checker.daemon = True
+    msg_checker.start()
     while True:
         while socket.poll(timeout = 10) == 0:
             time.sleep(1)
             multiprocessing.active_children()
             pre_q_to_q(processes, pre_queues, queues, SITES)
+            msg_checker.join(0.1)
+            """
             for site in processes.keys():
                 for proc in processes[site].keys():
                     if processes[site][proc]['conn'].poll(0.1):
@@ -296,6 +316,7 @@ def start_prm(main_conn):
                         for item in message:
                             processes[site][proc][item[0]] = item[1]
                         #processes[site][proc]['conn'].send("OK")
+            """
             pass
         request = socket.recv_json()
         try:
@@ -312,6 +333,7 @@ def start_prm(main_conn):
         except Exception as e:
             time.sleep(2)
             response = str(e) # TODO - respone should contain a "success/fail" field
+            print response
         finally:
             socket.send_json(response)
 
