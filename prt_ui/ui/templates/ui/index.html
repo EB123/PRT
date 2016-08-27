@@ -108,9 +108,9 @@
   right: 5%;
   bottom: 0;
   left: 0;
-  margin: 2% 0 2% 5%;
+  margin: 2% 0 0 5%;
   overflow: scroll;
-  border: 2px solid rgba(0,150,255,0.91);
+  border: 2px solid rgba(0,3,5,0.91);
   font: normal 17px/2 "Times New Roman", Times, serif;
   color: rgba(5,0,0,1);
     text-indent: 13px;
@@ -118,10 +118,10 @@
   -o-text-overflow: ellipsis;
   text-overflow: ellipsis;
         width: 95%;
-    height: 17vh;
+    height: 20vh;
     overflow: auto !important;
     border-style: solid;
-    border-width: 5px !important;
+    border-width: 2px !important;
 }
 
 .enjoy-css {
@@ -151,7 +151,7 @@
 
 .resume_worker {
     position: relative;
-    box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    box-shadow: 0 6px 8.5px 3px rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
 .resume_worker:active {
     top: 2px;
@@ -163,7 +163,7 @@
 
 .pause_worker {
     position: relative;
-    box-shadow: 0 4px 6.5px 0 rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    box-shadow: 0 6px 8.5px 3px rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
 .pause_worker:active {
     top: 2px;
@@ -172,6 +172,39 @@
     top: 2px;
     box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
+
+.workers {
+    float: left;
+  -webkit-box-sizing: content-box;
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+  margin: 4px 0 5px;
+  padding: 4px;
+  border: none;
+  -webkit-border-radius: 12px;
+  border-radius: 6px;
+  font: normal 18px/1 "Lucida Console", Monaco, monospace;
+  color: rgba(5,4,0,1);
+  text-align: center;
+    border: 1px solid rgba(0,3,5,0.91);
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+  background: -webkit-linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background: -moz-linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background: linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background-position: 50% 50%;
+  -webkit-background-origin: padding-box;
+  background-origin: padding-box;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-background-size: cover;
+  background-size: cover;
+}
+
+h3 {
+
+    margin-top: 3px;
+}
 
 </style>
 <script type="text/javascript">
@@ -425,7 +458,6 @@ $(document).ready(function(){
         var target_button = event.target.id;
         var form = $("#"+target_button).closest("form")
         var status = $("#"+target_button).prop("checked");
-        alert(status);
         form.find(".myCheckBoxes").each(function() {
             $(this).prop('checked', status);
         });
@@ -481,6 +513,13 @@ $(document).ajaxError(function(event, xhr, options) {
             });
 
 
+$(".panicPause").click(function() {
+
+
+
+});
+
+
 });
 </script>
 </head>
@@ -517,7 +556,7 @@ $(document).ajaxError(function(event, xhr, options) {
 <h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
 <ul>
     {% for pid, proc_hash in site_hash.workers.items %}
-        <li>{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
+        <li class="workers">{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
         <button  style="margin-right:2px" id="{{pid}}-start" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="resume_worker">&#9658;</button>
         <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause_worker">&#9646;&#9646;</button></li>
     {% endfor %}

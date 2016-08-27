@@ -69,7 +69,7 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
         data.append("<ul>")
         for pid in resp[site]['workers']:
             proc_hash = resp[site]['workers'][pid]
-            data.append("<li>%s - status: %s, currently working on: %s, step: %s" % (pid, proc_hash['status'], proc_hash['working_on'],
+            data.append("<li class='workers'>%s - status: %s, currently working on: %s, step: %s" % (pid, proc_hash['status'], proc_hash['working_on'],
                                                                                                            proc_hash['step']))
             data.append("<button  style='margin-right:4px; margin-left:6px' id='%s-start' value='%s' data-pressed='%s' class='resume_worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
             data.append("<button  style='margin-top:0' id='%s-pause' value='%s' data-pressed='%s' class='pause_worker'>&#9646;&#9646;</button></li>" % (pid, pid, proc_hash['status']))

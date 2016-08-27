@@ -204,11 +204,13 @@ def init_dictionaries(SITES):
         pre_queues[site] = []
     return processes, queues, pre_queues
 
+"""
 def pre_q_to_q(processes, pre_queues, queues, SITES):
     for site in SITES:
         for pid in processes[site]:
             if len(pre_queues[site]) > 0 and processes[site][pid]['status'] == "Idle":
                 queues[site].put(pre_queues[site].pop(0))
+"""
 
 
 #TODO - Create a decorator that will validate that the process still exists (that there's someone on the other side
@@ -243,7 +245,7 @@ def get_default_num_workers(**kwargs):
     conf = prt_utils.get_conf_from_file(workers_conf_file) # TODO - Conf file should only be read once at the start.
     num_workers_for_release = {}
     for site in conf:
-        num_workers_for_release[sit] = conf[site]['num_of_workers']
+        num_workers_for_release[site] = conf[site]['num_of_workers']
     return num_workers_for_release
 
 
@@ -267,7 +269,7 @@ def start_workers_for_release(**kwargs):
     return response
 
 
-def get_workers_status(processes, lock):
+def get_workers_status(processes, pre_queues, queues, SITES, lock):
     while True:
         for site in processes.keys():
             for proc in processes[site].keys():
@@ -277,8 +279,14 @@ def get_workers_status(processes, lock):
                         lock.acquire()
                         processes[site][proc][item[0]] = item[1]
                         lock.release()
-                    #processes[site][proc]['conn'].send("OK")
-        time.sleep(5)
+                    #processes[site][proc]['conn'].send ("OK")
+        for site in SITES:
+            for pid in processes[site]:
+                if len(pre_queues[site]) > 0 and processes[site][pid]['status'] == "Idle":
+                    lock.acquire()
+                    queues[site].put(pre_queues[site].pop(0))
+                    lock.release()
+        time.sleep(2)
 
 
 #TODO - There should be a regular process_checker, in case for some reasone a process dies
@@ -299,14 +307,14 @@ def start_prm(main_conn):
     q = multiprocessing.Queue()
     lock = threading.Lock()
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
-    msg_checker = threading.Thread(target=get_workers_status, args=(processes, lock))
+    msg_checker = threading.Thread(target=get_workers_status, args=(processes, pre_queues, queues, SITES, lock))
     msg_checker.daemon = True
     msg_checker.start()
     while True:
         while socket.poll(timeout = 10) == 0:
-            time.sleep(1)
+            time.sleep(0.5)
             multiprocessing.active_children()
-            pre_q_to_q(processes, pre_queues, queues, SITES)
+            #pre_q_to_q(processes, pre_queues, queues, SITES)
             msg_checker.join(0.1)
             """
             for site in processes.keys():
