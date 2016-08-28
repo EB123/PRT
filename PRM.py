@@ -343,7 +343,11 @@ def start_prm(main_conn):
             response = str(e) # TODO - respone should contain a "success/fail" field
             print response
         finally:
-            socket.send_json(response)
+            try:
+                socket.send_json(response)
+            except Exception: # TODO - this should only refer to socket exceptions
+                print "Something went REALLY wrong, unable to send response to UI. Exiting..."
+                sys.exit(1)
 
 
 if __name__ == '__main__':
