@@ -9,7 +9,8 @@ import zmq
 import os
 import logging
 import threading
-
+import mplog
+import proxy_worker
 
 
 ### Proxies For Test Purposes Only ###
@@ -51,7 +52,7 @@ def process_validator(func):
 
 
 
-def proxy_worker(q, conn):
+def proxy_workerr(q, conn, logging_q):
 
 
     def talk_with_prm(conn, message):
@@ -66,7 +67,7 @@ def proxy_worker(q, conn):
         result = method()
         return result
 
-    def temp_logger(): # TODO - Create an async logging feature
+    def temp_logger(logging_q): # TODO - Create an async logging feature
         log_base_dir = "/tmp/prt_logs"
         log_file = os.path.join(log_base_dir, "ProxyWorker-%s" % str(os.getpid()))
         logging.basicConfig(level=logging.INFO,
@@ -86,7 +87,10 @@ def proxy_worker(q, conn):
     try:
 
         stopWorker = False
-        logger = temp_logger()
+        #logger = temp_logger(logging_q)
+        logger = logging.getLogger(__name__)
+        print logger.name
+        print logger.parent
         currentStatus = "Idle" # To know the last status when resuming from paused
         currentProxy = None # Still not sure if this will actually be used
         currentStep = None # Still not sure if this will actually be used
@@ -158,22 +162,27 @@ def active_proxy_workers(**kwargs):
     return active_count
 
 def create_process(**kwargs):
-    processes = kwargs['processes']
-    queues = kwargs['queues']
-    site = kwargs['site']
-    prm_conn, proc_conn = multiprocessing.Pipe()
-    proc = multiprocessing.Process(target=proxy_worker, args=(queues[site], proc_conn))
-    proc.daemon = True
-    proc.start()
-    pid = str(proc.pid)
-    processes[site][pid] = {}
-    processes[site][pid]['conn'] = prm_conn
-    processes[site][pid]['proc'] = proc
-    processes[site][pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
-    processes[site][pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
+    try:
+        processes = kwargs['processes']
+        queues = kwargs['queues']
+        site = kwargs['site']
+        logging_q = kwargs['logging_q']
+        prm_conn, proc_conn = multiprocessing.Pipe()
+        worker_num = len(processes[site]) + 1
+        proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, logging_q, site, worker_num))
+        proc.daemon = True
+        proc.start()
+        pid = str(proc.pid)
+        processes[site][pid] = {}
+        processes[site][pid]['conn'] = prm_conn
+        processes[site][pid]['proc'] = proc
+        processes[site][pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
+        processes[site][pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
                                                    # is idle
-    processes[site][pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
-    return pid
+        processes[site][pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
+        return pid
+    except Exception:
+        raise
 
 def create_sites_queues(sites_dict):
     for site in sites_dict.keys():
@@ -254,6 +263,7 @@ def start_workers_for_release(**kwargs):
     numOfWorkers = kwargs['numOfWorkers']
     processes = kwargs['processes']
     queues = kwargs['queues']
+    logging_q = kwargs['logging_q']
     response = {}
     for item in numOfWorkers:
         site = item[0]
@@ -293,10 +303,20 @@ def get_workers_status(processes, pre_queues, queues, SITES, lock):
 
 
 def start_prm(main_conn):
+    #formatter = logging.Formatter('%(worker)s: %(asctime)s %(levelname)-8s %(message)s')
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     this_module = sys.modules[__name__]
+    mpHandler = mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0)
+    #mpHandler.setFormatter(formatter)
+    #logger.addHandler(mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0))
+    logger.root.addHandler(mpHandler)
+    logger.info("====================================================================================================")
+    logger.info("====================================================================================================")
     SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
     processes, queues, pre_queues = init_dictionaries(SITES)
-    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues} # TODO - There should be an init func that returns prmDict with all its keys
+    logging_q = multiprocessing.Queue()
+    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'logging_q':logging_q} # TODO - There should be an init func that returns prmDict with all its keys
     toExit = False
     prmDict['sites_dict'] = {}
     for site in SITES:
@@ -304,7 +324,7 @@ def start_prm(main_conn):
         prmDict['sites_dict'][site]['procs'] = {}
     ###create_sites_queues(prmDict['sites_dict'])
     ###prmDict['processes'] = []
-    q = multiprocessing.Queue()
+
     lock = threading.Lock()
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
     msg_checker = threading.Thread(target=get_workers_status, args=(processes, pre_queues, queues, SITES, lock))
@@ -339,14 +359,16 @@ def start_prm(main_conn):
             else:
                 response = method()
         except Exception as e:
+            print "PRM exception handler"
             time.sleep(2)
             response = str(e) # TODO - respone should contain a "success/fail" field
-            print response
+            print "%s" % e # TODO - Make sure the full traceback is printed. right now only e.message is printed.
         finally:
             try:
                 socket.send_json(response)
-            except Exception: # TODO - this should only refer to socket exceptions
+            except Exception as e: # TODO - this should only refer to socket exceptions
                 print "Something went REALLY wrong, unable to send response to UI. Exiting..."
+                print e
                 sys.exit(1)
 
 
