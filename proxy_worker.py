@@ -13,7 +13,7 @@ import threading
 
 
 
-def proxy_worker(q, conn, logging_q, site, worker_num):
+def proxy_worker(q, conn, site, worker_num):
 
 
     def talk_with_prm(conn, message):
@@ -46,8 +46,8 @@ def proxy_worker(q, conn, logging_q, site, worker_num):
 
 
     try:
-        #me = {'worker': 'Worker-%s-%s' % (site, worker_num)}
-        me = 'Worker-%s-%s' % (site, worker_num)
+        me = {'worker': 'Worker-%s-%s' % (site, worker_num)}
+        #me = 'Worker-%s-%s' % (site, worker_num)
         stopWorker = False
         #logger = temp_logger(logging_q)
         logger = logging.getLogger(__name__)
@@ -57,9 +57,9 @@ def proxy_worker(q, conn, logging_q, site, worker_num):
         currentProxy = None # Still not sure if this will actually be used
         currentStep = None # Still not sure if this will actually be used
         while not stopWorker:
-            logger.info("%s: I'M UP!" % me )
+            logger.info("I'M UP!", extra=me )
             p = None
-            logger.info("%s: Waiting for input..." % me)
+            logger.info("Waiting for input...", extra=me)
             while not p:
                 try:
                     prt_utils.worker_get_instructions(conn, currentStatus)
@@ -71,7 +71,7 @@ def proxy_worker(q, conn, logging_q, site, worker_num):
             currentStep = "check_dump_age"
             message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             prt_utils.message_to_prm(conn, message)
-            logger.info("Got a new proxy to work on: %s" % p)
+            logger.info("Got a new proxy to work on: %s" % p, extra=me)
             proxy = sproxy.sProxy(p)
             while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
                 print "Dump is to old.."
@@ -88,12 +88,12 @@ def proxy_worker(q, conn, logging_q, site, worker_num):
                 message = [['step', action]]
                 prt_utils.message_to_prm(conn, message)
                 prt_utils.worker_get_instructions(conn, currentStatus)
-                print "Process-%s: %s" % (os.getpid(),run_next_step(proxy, action))
+                logger.info("Process-%s: %s" % (os.getpid(),run_next_step(proxy, action)), extra=me)
 
             message = [['step', 'waiting_for_start']]
             prt_utils.message_to_prm(conn, message)
             while proxy.check_state() != "Started":
-                print "Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name)
+                logger.info("Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name), extra=me)
                 for i in range(10):
                     prt_utils.worker_get_instructions(conn, currentStatus)
                     time.sleep(1)

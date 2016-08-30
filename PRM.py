@@ -51,7 +51,7 @@ def process_validator(func):
     return validator
 
 
-
+"""
 def proxy_workerr(q, conn, logging_q):
 
 
@@ -142,6 +142,8 @@ def proxy_workerr(q, conn, logging_q):
     except Exception as e:
         raise
 
+"""
+
 def test():
     return "This Is Test Func"
 
@@ -166,10 +168,9 @@ def create_process(**kwargs):
         processes = kwargs['processes']
         queues = kwargs['queues']
         site = kwargs['site']
-        logging_q = kwargs['logging_q']
         prm_conn, proc_conn = multiprocessing.Pipe()
         worker_num = len(processes[site]) + 1
-        proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, logging_q, site, worker_num))
+        proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, site, worker_num))
         proc.daemon = True
         proc.start()
         pid = str(proc.pid)
@@ -263,7 +264,6 @@ def start_workers_for_release(**kwargs):
     numOfWorkers = kwargs['numOfWorkers']
     processes = kwargs['processes']
     queues = kwargs['queues']
-    logging_q = kwargs['logging_q']
     response = {}
     for item in numOfWorkers:
         site = item[0]
@@ -303,20 +303,21 @@ def get_workers_status(processes, pre_queues, queues, SITES, lock):
 
 
 def start_prm(main_conn):
-    #formatter = logging.Formatter('%(worker)s: %(asctime)s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(worker)s: %(levelname)-8s %(message)s')
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     this_module = sys.modules[__name__]
     mpHandler = mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0)
-    #mpHandler.setFormatter(formatter)
+    mpHandler.setFormatter(formatter)
     #logger.addHandler(mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0))
     logger.root.addHandler(mpHandler)
-    logger.info("====================================================================================================")
-    logger.info("====================================================================================================")
+    me = {'worker': 'PRM'}
+    logger.info("============================================================================", extra=me)
+    logger.info("================================   PRM Has Started!  =======================", extra=me)
+    logger.info("============================================================================", extra=me)
     SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
     processes, queues, pre_queues = init_dictionaries(SITES)
-    logging_q = multiprocessing.Queue()
-    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'logging_q':logging_q} # TODO - There should be an init func that returns prmDict with all its keys
+    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues} # TODO - There should be an init func that returns prmDict with all its keys
     toExit = False
     prmDict['sites_dict'] = {}
     for site in SITES:
