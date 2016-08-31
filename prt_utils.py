@@ -3,6 +3,8 @@ import multiprocessing
 import zmq
 import sys
 import ConfigParser
+from subprocess import Popen, PIPE
+import paramiko
 
 def worker_get_instructions(conn, currentStatus):
     try:
@@ -80,6 +82,43 @@ def get_conf_from_file(conf_file):
         for param in params:
             conf[section][param[0]] = param[1]
     return conf
+
+
+def runCmd(cmd):
+
+    out = None
+    err = None
+    exitCode = None
+    try:
+        p = Popen(cmd, stdin = PIPE, stdout = PIPE, stderr = PIPE, shell=True)
+        out, err = p.communicate()
+        exitCode = p.returncode
+
+    except Exception as e:
+        ##print "Caught Exception : " + str(e)
+        raise
+    return out, err, exitCode
+
+
+def ssh_execute(sshclient, cmd, timeout = 20.0):
+
+    transport = sshclient.get_transport()
+    chan = transport.open_session()
+    chan.settimeout(timeout)
+    chan.exec_command(cmd)
+    stdout = chan.makefile('r', -1)
+    tmp_output = []
+    while not chan.exit_status_ready():
+        tmp_output.append(stdout.readline())
+        pass
+    for line in stdout:
+        tmp_output.append(line)
+    output = []
+    if len(tmp_output):
+        for line in tmp_output:
+            if not line == '':
+                output.append(line.strip())
+    return output
 
 
 """
