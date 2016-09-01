@@ -15,6 +15,13 @@ import threading
 
 def proxy_worker(q, conn, site, worker_num):
 
+    #### A few constant dict for changing job states ####
+    CacheDumpJob_pause = {'daemon': {'state' : 'JOB_PAUSED'}}
+    CacheDumpJob_resume = {'daemon': {'state' : 'JOB_ACTIVE'}}
+    CacheDumpJob_reschedule = {'daemon': {'scheduling': {'interval': '3600000', 'type': 'interval'}}}
+    CacheDumpJob_reschedule_cron = {'daemon': {'scheduling': {'cronString' : '0 0 11 * * ?', 'type': 'cron'}}}
+    CacheDumpJob_data = {'pause': _CacheDumpJob_pause, 'resume': _CacheDumpJob_resume,
+                            'reschedule': _CacheDumpJob_reschedule, 'reschedule_cron': _CacheDumpJob_reschedule_cron}
 
     def talk_with_prm(conn, message):
         conn.send(message)
@@ -73,16 +80,16 @@ def proxy_worker(q, conn, site, worker_num):
             prt_utils.message_to_prm(conn, message)
             logger.info("Got a new proxy to work on: %s" % p, extra=me)
             proxy = sproxy.sProxy(p)
-            while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
-                print "Dump is to old.."
+            while proxy.check_dump_age() > 24: # If dump age is more than 54 minutes - Create new dump
+                logger.info("Dump is to old...", extra=me)
                 proxy.dump_cache()
                 message = [['step', 'waiting for cacheDump']]
                 prt_utils.message_to_prm(conn, message)
-                while proxy.check_dump_age() < 0:
-                    for i in range(10):
+                while proxy.check_dump_age() > 24:
+                    for i in range(30):
                         prt_utils.worker_get_instructions(conn, currentStatus)
                         time.sleep(1)
-                    print "Checking dump again..."
+                    logger.info("Checking dump again...", extra=me)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
                 message = [['step', action]]
@@ -97,7 +104,8 @@ def proxy_worker(q, conn, site, worker_num):
                 for i in range(10):
                     prt_utils.worker_get_instructions(conn, currentStatus)
                     time.sleep(1)
-            proxy.in_rotation()
+            proxy.in_out_rotation('an', 'in')
+            proxy.in_out_rotation('lb', 'in')
             stopWorker = talk_with_prm(conn, "toStop?")
 
     except Exception as e:
