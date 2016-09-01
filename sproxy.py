@@ -76,33 +76,35 @@ class sProxy:
             return float(response.text.split()[0]) # TODO - check status_code, if not 200 - raise
 
     def stop_proxy(self, retries = 100):
-        '''
         # TODO - Create stop_proxy func
-        is_stopped = False
-        cmd = "jps -l | grep catalina | awk '{print $1}'"
-        exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
-        if exitCode == 0:
-            catalina_pid = output[0]
-            print catalina_pid
-        cmd = "jps -l | grep rmi.registry | awk '{print $1}'"
-        exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
-        if exitCode == 0:
-            rmi_pid = output[0]
-            print rmi_pid
-        pids = {catalina_pid: True, rmi_pid: True}
-        retry = 1
-        while not is_stopped and retry < retries:
-            for pid in pids:
-                cmd = 'kill -9 %s' % pid
-                exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
-                cmd = 'ps -ef | grep %s' pid
-                exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
-                if not exitCode == 0:
-                    pids[pid] = False
-            if not pids[catalina_pid] and not pid[rmi_pid]:
-                is_stopped = True
-        '''
-        return "Proxy %s Stopped" % self.name
+        if self.is_test:
+            is_stopped = False
+            cmd = "jps -l | grep catalina | awk '{print $1}'"
+            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
+            if exitCode == 0:
+                catalina_pid = output[0]
+                print catalina_pid
+            cmd = "jps -l | grep rmi.registry | awk '{print $1}'"
+            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
+            if exitCode == 0:
+                rmi_pid = output[0]
+                print rmi_pid
+            pids = {catalina_pid: True, rmi_pid: True}
+            retry = 1
+            while not is_stopped and retry < retries:
+                for pid in pids:
+                    #cmd = 'kill -9 %s' % pid
+                    #exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                    cmd = 'ps -ef | grep %s' % pid
+                    exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                    if not exitCode == 0:
+                        pids[pid] = False
+                if not pids[catalina_pid] and not pids[rmi_pid]:
+                    is_stopped = True
+                retry += 1
+            return is_stopped
+        else:
+            return "Not allowd on production proxies"
 
     def release_proxy(self):
         # TODO - Create release_proxy func
