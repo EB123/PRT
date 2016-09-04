@@ -40,7 +40,7 @@ def ajax_create_process(request):
     if request.method == "POST" and request.is_ajax():
         site = request.POST['ajaxarg_site']
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "create_process", ["processes", "queues"], {"site": site}])
+        socket.send_json(["prm", "create_process", ["processes", "queues", "r"], {"site": site}])
         resp = socket.recv_json()
         #data = auto_reload(socket)
         socket.close()
@@ -143,7 +143,7 @@ def ajax_start_workers_for_release(request):
         if request.method == "POST" and request.is_ajax():
             numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
             socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues"], {'numOfWorkers': numOfWorkers}])
+            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues", "r"], {'numOfWorkers': numOfWorkers}])
             resp = socket.recv_json()
             socket.close()
             return HttpResponse(json.dumps(resp))
