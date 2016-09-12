@@ -5,6 +5,10 @@ import sys
 import ConfigParser
 from subprocess import Popen, PIPE
 import paramiko
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def worker_get_instructions(conn, currentStatus):
     try:
@@ -102,6 +106,7 @@ def runCmd(cmd):
 
 def ssh_execute(sshclient, cmd, timeout = 20.0):
 
+    logger.debug("About to execute: %s" % cmd)
     transport = sshclient.get_transport()
     chan = transport.open_session()
     chan.settimeout(timeout)

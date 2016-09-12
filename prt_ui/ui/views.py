@@ -8,7 +8,8 @@ import json
 
 ### Proxies For Test Purposes Only ###
 
-SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg", "test"]
+#SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+SITES = ["OPS_PROXY", "OPS_PROXY_2"]
 ny_an = []
 ny_lb = []
 ams_an = []
@@ -16,7 +17,6 @@ ams_lb = []
 lax_an = []
 lax_lb = []
 sg = []
-test = ["test-proxy03.test.peer39dom.com", "test-proxy05.test.peer39dom.com"]
 '''
 ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
 ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12','ny4aproxy13', 'ny4aproxy14', 'ny4aproxy15', 'ny4aproxy16']

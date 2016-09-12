@@ -11,11 +11,14 @@ import logging
 import threading
 import mplog
 import proxy_worker
+import requests
+import json
 
 
 ### Proxies For Test Purposes Only ###
 
 #SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg", "test"]
+SITES = ["OPS_PROXY", "OPS_PROXY_2"]
 ny_an = []
 ny_lb = []
 ams_an = []
@@ -59,98 +62,24 @@ def process_validator(func):
     return validator
 
 
-"""
-def proxy_workerr(q, conn, logging_q):
+def getServersInComp(comp, env='dev'):
+    compsvc = {'dev': 'dev-compsvc01.dev.peer39dom.com'} # TODO - Add prod compsvc
+    compsvc_port = '8080'
+    url = 'http://%s:%s/ComponentsService/component/%s' % (compsvc[env], compsvc_port, comp)
+    resp = requests.get(url)
+    servers = {}
+    if resp.status_code == 200:
+        jresp = json.loads(resp.text)
+        for server in jresp['result']['components']:
+            if server['groupName'].startswith('OPS_PROXY'):
+                if not servers.has_key(server['groupName']):
+                    servers[server['groupName']] = []
+                servers[server['groupName']].append(server['machineName'])
+        return servers
+    else:
+        raise RuntimeError("Failed to get comp list")
 
 
-    def talk_with_prm(conn, message):
-        conn.send(message)
-        while not conn.poll(1):
-            time.sleep(5)
-        answer = conn.recv()
-        return answer
-
-    def run_next_step(proxy, step_name):
-        method = getattr(proxy, step_name)
-        result = method()
-        return result
-
-    def temp_logger(logging_q): # TODO - Create an async logging feature
-        log_base_dir = "/tmp/prt_logs"
-        log_file = os.path.join(log_base_dir, "ProxyWorker-%s" % str(os.getpid()))
-        logging.basicConfig(level=logging.INFO,
-            format='%(asctime)s %(levelname)-8s %(message)s',
-            datefmt='%m-%d %H:%M',
-            filename=log_file)
-        logger = logging.getLogger(__name__)
-        ch = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', '%m-%d %H:%M')
-        ch.setFormatter(formatter)
-        ch.setLevel(logging.INFO)
-        logger.root.addHandler(ch)
-        return logger
-
-
-
-    try:
-
-        stopWorker = False
-        #logger = temp_logger(logging_q)
-        logger = logging.getLogger(__name__)
-        print logger.name
-        print logger.parent
-        currentStatus = "Idle" # To know the last status when resuming from paused
-        currentProxy = None # Still not sure if this will actually be used
-        currentStep = None # Still not sure if this will actually be used
-        while not stopWorker:
-            logger.info("I'M UP!")
-            p = None
-            logger.info("Waiting for input...")
-            while not p:
-                try:
-                    prt_utils.worker_get_instructions(conn, currentStatus)
-                    p = q.get(True, 0.1)
-                except Queue.Empty:
-                    pass
-            currentStatus = "Busy"
-            currentProxy = p
-            currentStep = "check_dump_age"
-            message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
-            prt_utils.message_to_prm(conn, message)
-            logger.info("Got a new proxy to work on: %s" % p)
-            proxy = sproxy.sProxy(p)
-
-            while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
-                print "Dump is to old.."
-                proxy.dump_cache()
-                message = [['step', 'waiting for cacheDump']]
-                prt_utils.message_to_prm(conn, message)
-                while proxy.check_dump_age() < 0:
-                    for i in range(10):
-                        prt_utils.worker_get_instructions(conn, currentStatus)
-                        time.sleep(1)
-                    print "Checking dump again..."
-            release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
-            for action in release_procedure:
-                message = [['step', action]]
-                prt_utils.message_to_prm(conn, message)
-                prt_utils.worker_get_instructions(conn, currentStatus)
-                print "Process-%s: %s" % (os.getpid(),run_next_step(proxy, action))
-
-            message = [['step', 'waiting_for_start']]
-            prt_utils.message_to_prm(conn, message)
-            while proxy.check_state() != "Started":
-                print "Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name)
-                for i in range(10):
-                    prt_utils.worker_get_instructions(conn, currentStatus)
-                    time.sleep(1)
-            proxy.in_rotation()
-            stopWorker = talk_with_prm(conn, "toStop?")
-
-    except Exception as e:
-        raise
-
-"""
 
 def active_proxy_workers(**kwargs):
     #sites_dict = kwargs['sites_dict']
@@ -160,7 +89,7 @@ def active_proxy_workers(**kwargs):
         active_count[site] = {}
         active_count[site]['workers'] = {}
         active_count[site]['active_workers'] = len(processes[site].keys())
-        active_count[site]['proxies'] = globals()[site] # Test purposes only
+        active_count[site]['proxies'] = globals()['comp_servers'][site] # Test purposes only
         for proc in processes[site].keys():
             active_count[site]['workers'][proc] = {}
             active_count[site]['workers'][proc]['status'] = processes[site][proc]['status']
@@ -320,7 +249,9 @@ def start_prm(main_conn):
     logger.info("============================================================================", extra=me)
     logger.info("================================   PRM Has Started!  =======================", extra=me)
     logger.info("============================================================================", extra=me)
-    SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg", "test"]
+    #SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg", "test"]
+    global comp_servers
+    comp_servers = getServersInComp('proxy')
     processes, queues, pre_queues = init_dictionaries(SITES)
     prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues} # TODO - There should be an init func that returns prmDict with all its keys
     toExit = False
