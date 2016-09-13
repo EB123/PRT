@@ -1,6 +1,6 @@
 import zmq
 
-def main(address, fe_port, be_port):
+def main(address, fe_port, be_port, be_type = 'connect'):
 
     try:
         context = zmq.Context(1)
@@ -10,7 +10,10 @@ def main(address, fe_port, be_port):
         # Socket facing services
         backend = context.socket(zmq.XREQ)
         #backend.bind("tcp://%s:%s" % (address, be_port))
-        backend.connect("tcp://%s:%s" % (address, be_port))
+        if be_type == 'connect':
+            backend.connect("tcp://%s:%s" % (address, be_port))
+        else:
+            backend.bind("tcp://%s:%s" % (address, be_port))
 
         zmq.device(zmq.QUEUE, frontend, backend)
     except Exception, e:

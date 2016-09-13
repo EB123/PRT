@@ -77,12 +77,18 @@ def create_process(**kwargs):
         processes = kwargs['processes']
         queues = kwargs['queues']
         site = kwargs['site']
+        r = kwargs['r']
+        processes_lock = kwargs['processes_lock']
         prm_conn, proc_conn = multiprocessing.Pipe()
+        print prm_conn.fileno()
+        print proc_conn.fileno()
         worker_num = len(processes[site]) + 1
         proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, site, worker_num))
         proc.daemon = True
         proc.start()
         pid = str(proc.pid)
+        r.sadd(site, pid)
+        processes_lock.acquire()
         processes[site][pid] = {}
         processes[site][pid]['conn'] = prm_conn
         processes[site][pid]['proc'] = proc
@@ -90,6 +96,8 @@ def create_process(**kwargs):
         processes[site][pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
                                                    # is idle
         processes[site][pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
+        processes_lock.release()
+        r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
         return pid
     except Exception:
         raise
@@ -113,7 +121,7 @@ def add_to_pre_q(**kwargs):
             wasAdded.append(proxy)
     return "%s was added to queue!" % wasAdded
 
-def init_dictionaries(SITES):
+def init_dictionaries(SITES, r):
     processes = {}
     queues = {}
     pre_queues = {}
@@ -121,6 +129,7 @@ def init_dictionaries(SITES):
         processes[site] = {}
         queues[site] = multiprocessing.Queue()
         pre_queues[site] = []
+        r.sadd('processes', site)
     return processes, queues, pre_queues
 
 """
@@ -143,9 +152,12 @@ def pause_or_resume_worker(**kwargs):
         action = kwargs['action']
         conn = processes[site][pid]['conn']
         conn.send(action)
+        print "sent pause message %s" % conn.fileno()
         while not conn.poll(0.1):
             pass
+        print "polling has ended %s" %conn.fileno()
         message = conn.recv()
+        print "got reply: %s" % message
         for item in message:
             processes[site][pid][item[0]] = item[1]
         #conn.send("OK")
@@ -173,6 +185,8 @@ def start_workers_for_release(**kwargs):
     numOfWorkers = kwargs['numOfWorkers']
     processes = kwargs['processes']
     queues = kwargs['queues']
+    r = kwargs['r']
+    processes_lock = kwargs['processes_lock']
     response = {}
     for item in numOfWorkers:
         site = item[0]
@@ -183,6 +197,8 @@ def start_workers_for_release(**kwargs):
             newKwargs['processes'] = processes
             newKwargs['queues'] = queues
             newKwargs['site'] = site
+            newKwargs['r'] = r
+            newKwargs['processes_lock'] = processes_lock
             pid = create_process(**newKwargs)
             response[site].append(pid)
     return response
@@ -190,6 +206,7 @@ def start_workers_for_release(**kwargs):
 
 def get_workers_status(processes, pre_queues, queues, SITES, lock):
     while True:
+        """
         for site in processes.keys():
             for proc in processes[site].keys():
                 if processes[site][proc]['conn'].poll(0.1):
@@ -199,19 +216,37 @@ def get_workers_status(processes, pre_queues, queues, SITES, lock):
                         processes[site][proc][item[0]] = item[1]
                         lock.release()
                     #processes[site][proc]['conn'].send ("OK")
+        """
         for site in SITES:
             for pid in processes[site]:
                 if len(pre_queues[site]) > 0 and processes[site][pid]['status'] == "Idle":
-                    lock.acquire()
+                    lock.acquire() # TODO - make the lock useful...
                     queues[site].put(pre_queues[site].pop(0))
                     lock.release()
         time.sleep(2)
 
 
+def processes_gc(processes, r, processes_lock):
+    while True:
+        for site in processes.keys():
+            for pid in processes[site].keys():
+                if not processes[site][pid]['proc'].is_alive():
+                    r.srem(site, processes[site][pid]['pid'])
+                    r.delete(processes[site][pid]['pid'])
+                    processes_lock.acquire()
+                    processes[site].pop(pid)
+                    processes_lock.release()
+        time.sleep(3)
+
 #TODO - There should be a regular process_checker, in case for some reasone a process dies
 
 
 def start_prm(main_conn):
+    try:
+        r = redis.StrictRedis(host='localhost', port=6379, db=1)
+    except Exception: # TODO - add redis exception
+        print "Cant connect to Redis!"
+        sys.exit(1)
     formatter = logging.Formatter('%(asctime)s %(worker)s: %(levelname)-8s %(message)s')
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -225,8 +260,10 @@ def start_prm(main_conn):
     logger.info("================================   PRM Has Started!  =======================", extra=me)
     logger.info("============================================================================", extra=me)
     SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
-    processes, queues, pre_queues = init_dictionaries(SITES)
-    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues} # TODO - There should be an init func that returns prmDict with all its keys
+    processes, queues, pre_queues = init_dictionaries(SITES, r)
+    processes_lock = threading.Lock()
+    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'r': r,
+        'processes_lock': processes_lock} # TODO - There should be an init func that returns prmDict with all its keys
     toExit = False
     prmDict['sites_dict'] = {}
     for site in SITES:
@@ -236,13 +273,17 @@ def start_prm(main_conn):
     ###prmDict['processes'] = []
 
     lock = threading.Lock()
+
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
     msg_checker = threading.Thread(target=get_workers_status, args=(processes, pre_queues, queues, SITES, lock))
+    processesGC = threading.Thread(target=processes_gc, args=(processes, r, processes_lock))
     msg_checker.daemon = True
+    processesGC.daemon = True
     msg_checker.start()
+    processesGC.start()
     while True:
         while socket.poll(timeout = 10) == 0:
-            time.sleep(0.5)
+            time.sleep(0.1)
             multiprocessing.active_children()
             #pre_q_to_q(processes, pre_queues, queues, SITES)
             msg_checker.join(0.1)

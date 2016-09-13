@@ -5,8 +5,10 @@ import sys
 import ConfigParser
 from subprocess import Popen, PIPE
 import paramiko
+import redis
+import os
 
-def worker_get_instructions(conn, currentStatus):
+def worker_get_instructions(conn, currentStatus, r):
     try:
         if conn.poll(0.1):
             notified = False
@@ -15,11 +17,14 @@ def worker_get_instructions(conn, currentStatus):
                 if not notified:
                     message = [["status", "Paused"]]
                     message_to_prm(conn, message)
+                    print "sent message to prm %s" % conn.fileno()
+                    r.hmset(os.getpid(), {'status': 'Paused'})
                     notified = True
                 if conn.poll(0.1):
                     instructions = conn.recv()
                     message = [["status", currentStatus]]
                     message_to_prm(conn, message)
+                    r.hmset(os.getpid(), {'status': currentStatus})
             if instructions == "stop":
                 raise Exception  # TODO - Create sproxy.stop_instruction exception
     except Exception as e:

@@ -30,7 +30,8 @@ def create_zmq_connection(address, port, socket_type): # TODO - should be taken 
 
 def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-    socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
+    #socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
+    socket.send_json(["mon", "active_proxy_workers", ["r"], {}])
     resp = socket.recv_json()
     context = {'active_workers': resp, 'sites': SITES}
     return render(request, "ui/index.html", context)
@@ -40,7 +41,7 @@ def ajax_create_process(request):
     if request.method == "POST" and request.is_ajax():
         site = request.POST['ajaxarg_site']
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "create_process", ["processes", "queues", "r"], {"site": site}])
+        socket.send_json(["prm", "create_process", ["processes", "queues", "r", "processes_lock"], {"site": site}])
         resp = socket.recv_json()
         #data = auto_reload(socket)
         socket.close()
@@ -49,7 +50,8 @@ def ajax_create_process(request):
 
 def ajax_auto_reload(request): # TODO - this func should be called from ajax_create_process and not from jquery
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-    socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
+    #socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
+    socket.send_json(["mon", "active_proxy_workers", ["r"], {}])
     resp = socket.recv_json()
     socket.close()
     data = []
@@ -143,7 +145,8 @@ def ajax_start_workers_for_release(request):
         if request.method == "POST" and request.is_ajax():
             numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
             socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues", "r"], {'numOfWorkers': numOfWorkers}])
+            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues", "r", "processes_lock"],
+                                                                                    {'numOfWorkers': numOfWorkers}])
             resp = socket.recv_json()
             socket.close()
             return HttpResponse(json.dumps(resp))

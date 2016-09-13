@@ -9,7 +9,7 @@ import zmq
 import os
 import logging
 import threading
-
+import redis
 
 
 
@@ -45,7 +45,13 @@ def proxy_worker(q, conn, site, worker_num):
 
 
 
+
     try:
+        try:
+            r = redis.StrictRedis(host='localhost', port=6379, db=1)
+        except Exception:  # TODO - add redis exception
+            print "Cant connect to Redis!"
+            sys.exit(1)
         me = {'worker': 'Worker-%s-%s' % (site, worker_num)}
         #me = 'Worker-%s-%s' % (site, worker_num)
         stopWorker = False
@@ -62,7 +68,7 @@ def proxy_worker(q, conn, site, worker_num):
             logger.info("Waiting for input...", extra=me)
             while not p:
                 try:
-                    prt_utils.worker_get_instructions(conn, currentStatus)
+                    prt_utils.worker_get_instructions(conn, currentStatus, r)
                     p = q.get(True, 0.1)
                 except Queue.Empty:
                     pass
@@ -71,31 +77,35 @@ def proxy_worker(q, conn, site, worker_num):
             currentStep = "check_dump_age"
             message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             prt_utils.message_to_prm(conn, message)
+            r.hmset(pid, {'status': currentStatus, 'working_on': currentProxy, 'step': currentStep})
             logger.info("Got a new proxy to work on: %s" % p, extra=me)
             proxy = sproxy.sProxy(p)
             while proxy.check_dump_age() > 50: # If dump age is more than 50 minutes - Create new dump
                 print "Dump is to old.."
                 proxy.dump_cache()
                 message = [['step', 'waiting for cacheDump']]
+                r.hmset(pid, {'step': 'waiting for cacheDump'})
                 prt_utils.message_to_prm(conn, message)
                 while proxy.check_dump_age() < 0:
                     for i in range(10):
-                        prt_utils.worker_get_instructions(conn, currentStatus)
+                        prt_utils.worker_get_instructions(conn, currentStatus, r)
                         time.sleep(1)
                     print "Checking dump again..."
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
             for action in release_procedure:
                 message = [['step', action]]
                 prt_utils.message_to_prm(conn, message)
-                prt_utils.worker_get_instructions(conn, currentStatus)
+                r.hmset(pid, {'step': action})
+                prt_utils.worker_get_instructions(conn, currentStatus, r)
                 logger.info("Process-%s: %s" % (os.getpid(),run_next_step(proxy, action)), extra=me)
 
             message = [['step', 'waiting_for_start']]
             prt_utils.message_to_prm(conn, message)
+            r.hmset(pid, {'step': 'waiting_for_start'})
             while proxy.check_state() != "Started":
                 logger.info("Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name), extra=me)
                 for i in range(10):
-                    prt_utils.worker_get_instructions(conn, currentStatus)
+                    prt_utils.worker_get_instructions(conn, currentStatus, r)
                     time.sleep(1)
             proxy.in_rotation()
             stopWorker = talk_with_prm(conn, "toStop?")
