@@ -80,8 +80,6 @@ def create_process(**kwargs):
         r = kwargs['r']
         processes_lock = kwargs['processes_lock']
         prm_conn, proc_conn = multiprocessing.Pipe()
-        print prm_conn.fileno()
-        print proc_conn.fileno()
         worker_num = len(processes[site]) + 1
         proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, site, worker_num))
         proc.daemon = True
@@ -152,12 +150,9 @@ def pause_or_resume_worker(**kwargs):
         action = kwargs['action']
         conn = processes[site][pid]['conn']
         conn.send(action)
-        print "sent pause message %s" % conn.fileno()
         while not conn.poll(0.1):
             pass
-        print "polling has ended %s" %conn.fileno()
         message = conn.recv()
-        print "got reply: %s" % message
         for item in message:
             processes[site][pid][item[0]] = item[1]
         #conn.send("OK")

@@ -17,7 +17,6 @@ def worker_get_instructions(conn, currentStatus, r):
                 if not notified:
                     message = [["status", "Paused"]]
                     message_to_prm(conn, message)
-                    print "sent message to prm %s" % conn.fileno()
                     r.hmset(os.getpid(), {'status': 'Paused'})
                     notified = True
                 if conn.poll(0.1):

@@ -40,16 +40,13 @@ def main_worker(q, zmq_address, zmq_ui_port, zmq_prm_port, zmq_mon_port):
             while socket_ui.poll(timeout = 10) == 0:
                 time.sleep(1)
                 pass
-            print "got request %s" % os.getpid()
             request = socket_ui.recv_json()
             if request[0] == "prm":
                 #active_socket = socket_prm
                 response = talk_with_agent(socket_prm, request)
-                print "got response: %s" % response
             elif request[0] == "mon":
                 #active_socket = socket_prm # TODO - should be socket_mon, but mon is not yet ready
                 response = talk_with_agent(socket_mon, request)
-                print "got response: %s" % response
             elif request[0] == "main":
                 talk_with_agent(socket_prm, ["", "exit"])
                 q.put(request[1])
