@@ -7,7 +7,8 @@ from subprocess import Popen, PIPE
 import paramiko
 import logging
 
-logger = logging.getLogger(__name__)
+
+
 
 
 def worker_get_instructions(conn, currentStatus):

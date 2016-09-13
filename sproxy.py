@@ -2,7 +2,6 @@ __author__ = 'Eyal'
 import time
 import paramiko
 import atexit
-import prt_utils
 import os
 import requests
 import json
@@ -43,6 +42,41 @@ class sProxy:
         else:
             return None
 
+    def _ssh_execute(self, sshclient, cmd, timeout=20.0):
+
+        self.logger.debug("About to execute: %s" % cmd)
+        transport = sshclient.get_transport()
+        chan = transport.open_session()
+        chan.settimeout(timeout)
+        chan.exec_command(cmd)
+        stdout = chan.makefile('r', -1)
+        stderr = chan.makefile_stderr('r', -1)
+        tmp_output = []
+        tmp_stderr = []
+        while not chan.exit_status_ready():
+            tmp_output.append(stdout.readline())
+            tmp_stderr.append(stderr.readline())
+            pass
+        exitCode = chan.recv_exit_status()
+        for line in stdout:
+            tmp_output.append(line)
+        for line in stderr:
+            tmp_stderr.append(line)
+        output = []
+        error = []
+        if len(tmp_output):
+            for line in tmp_output:
+                if not line == '':
+                    output.append(line.strip())
+        if len(tmp_stderr):
+            for line in tmp_stderr:
+                if not line == '':
+                    error.append(line.strip())
+        self.logger.debug("Exit code is: %s" % exitCode)
+        self.logger.debug("stdout is: %s" % '\n'.join(output))
+        self.logger.debug("stderr is: %s" % '\n'.join(error))
+        return exitCode, output, error
+
     def _configLogger(self, log_dir):
         logger = logging.getLogger("%s-%s" %(__name__, self.name.split('.')[0]))
         logger.setLevel(logging.DEBUG)
@@ -82,11 +116,11 @@ class sProxy:
         # TODO - Create check_dump_age func
         if self.is_test:
             cmd = '/bin/ls -l ' + dump_location + " | grep dump | grep rdy$ | awk '{print $9}'"
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode == 0 and len(output) == 1: # TODO - better way for handling errors
                 dump_file = os.path.join(dump_location, output[0])
                 cmd = "stat --printf '%%Y' %s" % dump_file
-                exitCode, dump_last_modified, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                exitCode, dump_last_modified, error = self._ssh_execute(self.sshconn, cmd)
                 if exitCode == 0 and len(dump_last_modified) == 1:
                     dump_last_modified = int(dump_last_modified[0])
                     now = time.time()
@@ -103,12 +137,12 @@ class sProxy:
         if self.is_test:
             is_stopped = False
             cmd = "jps -l | grep catalina | awk '{print $1}'"
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, self.base_cmd + cmd)
             if exitCode == 0:
                 catalina_pid = output[0]
                 print catalina_pid
             cmd = "jps -l | grep rmi.registry | awk '{print $1}'"
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, self.base_cmd + cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, self.base_cmd + cmd)
             if exitCode == 0:
                 rmi_pid = output[0]
                 print rmi_pid
@@ -117,10 +151,10 @@ class sProxy:
             while not is_stopped and retry < retries:
                 for pid in pids:
                     cmd = 'runuser -l peeradmin -c "kill -9 %s"' % pid
-                    exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                    exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
                     time.sleep(0.2)
                     cmd = 'runuser -l peeradmin -c "ps -ef | grep %s | grep -v grep"' % pid
-                    exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                    exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
                     if not exitCode == 0:
                         pids[pid] = False
                 if not pids[catalina_pid] and not pids[rmi_pid]:
@@ -137,7 +171,7 @@ class sProxy:
             zip_file = 'peer39-proxy-%s.context.zip' % version
             zip_file_path = os.path.join(zip_file_dir, zip_file)
             cmd = "/usr/bin/md5sum %s | awk '{print $1}'" % zip_file_path
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if output[0] != md5:
                 raise RuntimeError("Wrong MD5!!!")
             base_dir = '/workspace/test/proxy'
@@ -145,24 +179,24 @@ class sProxy:
             print new_ver_path
             cmd = "rm -rf %s; unlink %s/peer39-proxy" % (new_ver_path, base_dir)
             print cmd
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             cmd = "%s 'cd %s && mkdir peer39-proxy-%s && cd peer39-proxy-%s && cp -f %s . && unzip %s'" % \
                   (runuser, base_dir, version, version, zip_file_path, zip_file)
             print cmd
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             cmd = "%s 'cd %s && ln -s peer39-proxy-%s peer39-proxy'" % (runuser, base_dir, version)
             print cmd
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             scripts_dir = '/workspace/development/org/apache/tomcat/6.0.29/webapps/ROOT/WEB-INF/scripts'
             cmd = "%s 'cd %s && chmod 775 *.sh && dos2unix *.sh'" % (runuser, scripts_dir)
             print cmd
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
         return
@@ -172,15 +206,15 @@ class sProxy:
         if self.is_test:
             exitCodes = {'rmi': None, 'catalina': None}
             cmd = "runuser -l peeradmin -c 'cd /workspace/development/org/apache/tomcat/6.0.29/webapps/ROOT/WEB-INF/scripts/ && ant rmiregistry'"
-            exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             exitCodes['rmi'] = exitCode
             if exitCode == 0:
                 cmd = "runuser -l peeradmin -c 'cd /workspace/development/org/apache/tomcat/6.0.29/bin/ && ./startup.sh'"
-                exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
                 exitCodes['catalina'] = exitCode
                 if exitCode == 0:
                     cmd = "runuser -l peeradmin -c 'jps -l | wc -l'"
-                    exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+                    exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
         return exitCodes, output
 
     def check_state(self):
@@ -191,7 +225,11 @@ class sProxy:
         status = {}
         for path in paths:
             url = 'http://%s:%s%s' % (self.name, self.port, paths[path])
-            response = requests.get(url) # TODO - add timeout
+            try:
+                response = requests.get(url, timeout=10) # TODO - add timeout
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+                print "No response from proxy!"
+                raise
             status[path] = response.text.strip() # TODO - check status_code
         return status
 
@@ -205,7 +243,7 @@ class sProxy:
         if proxy_type == 'lb':
             keepalive_url = keepalive_url + '.txt'
         cmd = '. ./.paramiko_profile ; cd %s && ./%s %s %s' % (scripts, change_rotation_script, keepalive_url, actions[proxy_type][action])
-        exitCode, output, error = prt_utils.ssh_execute(self.sshconn, cmd)
+        exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
         return exitCode, output, error
 
     """
