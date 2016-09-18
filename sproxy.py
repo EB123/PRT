@@ -114,6 +114,7 @@ class sProxy:
 
     def check_dump_age(self, dump_location = '/workspace/repository/proxy/dump'):
         # TODO - Create check_dump_age func
+        """
         if self.is_test:
             cmd = '/bin/ls -l ' + dump_location + " | grep dump | grep rdy$ | awk '{print $9}'"
             exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
@@ -126,11 +127,13 @@ class sProxy:
                     now = time.time()
                     dump_age = float(now - dump_last_modified) / 3600
                     return dump_age
+
         else:
-            proxy_pl_path = '/ops/cgi-bin/proxy.pl'
-            url = 'http://%s:%s%s' % (self.name, self.proxy_pl_port, proxy_pl_path)
-            response = requests.get(url, params={'key': 'dump_age_min'})
-            return float(response.text.split()[0]) # TODO - check status_code, if not 200 - raise
+        """
+        proxy_pl_path = '/ops/cgi-bin/proxy.pl'
+        url = 'http://%s:%s%s' % (self.name, self.proxy_pl_port, proxy_pl_path)
+        response = requests.get(url, params={'key': 'dump_age_min'})
+        return float(response.text.split()[0]) # TODO - check status_code, if not 200 - raise
 
     def stop_proxy(self, retries = 100): # TODO - handle scenario that proxy is already stopped
         # TODO - Create stop_proxy func
