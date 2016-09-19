@@ -84,9 +84,17 @@ def create_main_workers(num_main_workers):
     return main_workers_pool
 
 
+def clean_queues_db():
+    try:
+        r = redis.StrictRedis(host='localhost', port=6379, db=11)
+    except Exception: # TODO - Specific exception
+        raise
+    r.flushdb()
+
 if __name__ == '__main__':
     try:
         print "Starting!"
+        clean_queues_db()
         try:
             r = redis.StrictRedis(host='localhost', port=6379, db=1)
         except Exception:  # TODO - add redis exception

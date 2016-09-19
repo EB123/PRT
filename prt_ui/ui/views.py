@@ -87,7 +87,7 @@ def ajax_add_to_queue(request):
         site = request.POST['ajaxarg_site']
         proxies = json.loads(request.POST['ajaxarg_proxy_name'])
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "add_to_pre_q", ["pre_queues"], {"site": site, "proxies": proxies}])
+        socket.send_json(["prm", "add_to_q", ["queues"], {"site": site, "proxies": proxies}])
         resp = socket.recv_json()
         socket.close()
         return HttpResponse(resp)
@@ -108,7 +108,7 @@ def ajax_pause_or_resume_worker(request):
 def ajax_get_preQs_status(request):
     if request.method == "POST" and request.is_ajax():
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "get_preQs_status", ["pre_queues"], {}])
+        socket.send_json(["prm", "get_Qs_status", ["queues"], {}])
         resp = socket.recv_json()
         socket.close()
         data = []

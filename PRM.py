@@ -90,10 +90,6 @@ def create_process(**kwargs):
         processes[site][pid] = {}
         processes[site][pid]['conn'] = prm_conn
         processes[site][pid]['proc'] = proc
-        processes[site][pid]['status'] = 'Idle' # Status can be Idle, Busy or Paused
-        processes[site][pid]['working_on'] = None # The proxy that worker is currently working on. None of the worker
-                                                   # is idle
-        processes[site][pid]['step'] = None # The step which the worker is currently on (start/stop/release...)
         processes_lock.release()
         r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
         return pid
@@ -105,17 +101,20 @@ def create_sites_queues(sites_dict):
         q = multiprocessing.Queue()
         sites_dict[site]['site_q'] = q
 
-def add_to_pre_q(**kwargs):
+def add_to_q(**kwargs):
     #sites_dict = kwargs['sites_dict']
-    pre_queues = kwargs['pre_queues']
+    ##pre_queues = kwargs['pre_queues']
+    queues = kwargs['queues']
     site = kwargs['site']
     proxies = kwargs['proxies']
     #site_q = sites_dict[site]['site_q']
     #site_q.put(proxy_name)
     wasAdded = []
+    q = queues[site]
+    q_items = q.get_items()
     for proxy in proxies:
-        if not proxy in pre_queues[site]:
-            pre_queues[site].append(proxy)
+        if not proxy in q_items:
+            q.put(proxy)
             wasAdded.append(proxy)
     return "%s was added to queue!" % wasAdded
 
@@ -125,7 +124,8 @@ def init_dictionaries(SITES, r):
     pre_queues = {}
     for site in SITES:
         processes[site] = {}
-        queues[site] = multiprocessing.Queue()
+        #queues[site] = multiprocessing.Queue() # Replaced by redisQueue
+        queues[site] = prt_utils.RedisQueue(site, host='localhost', port=6379, db=11)
         pre_queues[site] = []
         r.sadd('processes', site)
     return processes, queues, pre_queues
@@ -163,8 +163,12 @@ def pause_or_resume_worker(**kwargs):
         raise
 
 
-def get_preQs_status(**kwargs):
-    return kwargs['pre_queues']
+def get_Qs_status(**kwargs):
+    queues = kwargs['queues']
+    queues_status = {}
+    for site in SITES:
+        queues_status[site] = queues[site].get_items()
+    return queues_status
 
 
 def get_default_num_workers(**kwargs):
@@ -259,18 +263,18 @@ def start_prm(main_conn):
     lock = threading.Lock()
 
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5556", zmq.REP, "bind")
-    msg_checker = threading.Thread(target=get_workers_status, args=(processes, pre_queues, queues, SITES, lock))
+    ##msg_checker = threading.Thread(target=get_workers_status, args=(processes, pre_queues, queues, SITES, lock))
     processesGC = threading.Thread(target=processes_gc, args=(processes, r, processes_lock))
-    msg_checker.daemon = True
+    ##msg_checker.daemon = True
     processesGC.daemon = True
-    msg_checker.start()
+    ##msg_checker.start()
     processesGC.start()
     while True:
         while socket.poll(timeout = 10) == 0:
             time.sleep(0.1)
             multiprocessing.active_children()
             #pre_q_to_q(processes, pre_queues, queues, SITES)
-            msg_checker.join(0.1)
+            ###msg_checker.join(0.1) # TODO - moved to redis
             pass
         request = socket.recv_json()
         try:
