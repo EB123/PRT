@@ -18,6 +18,7 @@ import json
 ### Proxies For Test Purposes Only ###
 
 ###SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+
 SITES = ["OPS_PROXY", "OPS_PROXY_2"]
 """
 ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
@@ -67,7 +68,7 @@ def active_proxy_workers(**kwargs):
         active_count[site] = {}
         active_count[site]['workers'] = {}
         active_count[site]['active_workers'] = len(processes[site].keys())
-        active_count[site]['proxies'] = globals()[site] # Test purposes only
+        active_count[site]['proxies'] = globals()['comp_servers'][site] # Test purposes only
         for proc in processes[site].keys():
             active_count[site]['workers'][proc] = {}
             active_count[site]['workers'][proc]['status'] = processes[site][proc]['status']

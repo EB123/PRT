@@ -7,6 +7,11 @@ from subprocess import Popen, PIPE
 import paramiko
 import redis
 import os
+import logging
+
+
+
+
 
 def worker_get_instructions(conn, currentStatus, r):
     try:
@@ -106,23 +111,35 @@ def runCmd(cmd):
 
 def ssh_execute(sshclient, cmd, timeout = 20.0):
 
+    logger.debug("About to execute: %s" % cmd)
     transport = sshclient.get_transport()
     chan = transport.open_session()
     chan.settimeout(timeout)
     chan.exec_command(cmd)
     stdout = chan.makefile('r', -1)
+    stderr = chan.makefile_stderr('r', -1)
     tmp_output = []
+    tmp_stderr = []
     while not chan.exit_status_ready():
         tmp_output.append(stdout.readline())
+        tmp_stderr.append(stderr.readline())
         pass
+    exitCode = chan.recv_exit_status()
     for line in stdout:
         tmp_output.append(line)
+    for line in stderr:
+        tmp_stderr.append(line)
     output = []
+    error = []
     if len(tmp_output):
         for line in tmp_output:
             if not line == '':
                 output.append(line.strip())
-    return output
+    if len(tmp_stderr):
+        for line in tmp_stderr:
+            if not line == '':
+                error.append(line.strip())
+    return exitCode, output, error
 
 
 """
