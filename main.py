@@ -27,7 +27,7 @@ def main_worker(q, zmq_address, zmq_ui_port, zmq_prm_port, zmq_mon_port):
         request.pop(0)
         socket.send_json(request)
         while socket.poll(timeout = 10) == 0:
-            time.sleep(1)
+            time.sleep(0.4)
         response = socket.recv_json()
         return response
 
@@ -38,7 +38,7 @@ def main_worker(q, zmq_address, zmq_ui_port, zmq_prm_port, zmq_mon_port):
         socket_mon = prt_utils.create_zmq_connection(zmq_address, zmq_mon_port, zmq.REQ, "connect")
         while not toExit:
             while socket_ui.poll(timeout = 10) == 0:
-                time.sleep(1)
+                time.sleep(0.2)
                 pass
             request = socket_ui.recv_json()
             if request[0] == "prm":
@@ -85,11 +85,12 @@ def create_main_workers(num_main_workers):
 
 
 def clean_queues_db():
-    try:
-        r = redis.StrictRedis(host='localhost', port=6379, db=11)
-    except Exception: # TODO - Specific exception
-        raise
-    r.flushdb()
+    for i in range(11,13):
+        try:
+            r = redis.StrictRedis(host='localhost', port=6379, db=i)
+        except Exception: # TODO - Specific exception
+            raise
+        r.flushdb()
 
 if __name__ == '__main__':
     try:
@@ -160,29 +161,14 @@ if __name__ == '__main__':
             #for proc in zmq_procs:
                 #proc.join(timeout=0.1)
             try:
-                p = q.get(True, 1)
+                p = q.get(True, 0.1)
                 print "got exit!"
                 toExit = p
             except Queue.Empty:
                 pass
-            time.sleep(1)
+            time.sleep(0.1)
 
         raise
-        """""
-        while not toExit:
-            while socket.poll(timeout = 1000) == 0:
-                pass
-            choice = socket.recv()
-            if choice == "start proxy worker":
-                prm_conn.send("start_proc")
-            elif choice == "enter to queue":
-                prm_conn.send("put in queue")
-            elif choice == "exit!":
-                print "Bye!"
-                sys.exit()
-            else:
-                raise
-        """
     except KeyboardInterrupt:
         print "Caught Ctrl+C!"
     except Exception as e:
