@@ -201,17 +201,6 @@ def start_workers_for_release(**kwargs):
 
 def get_workers_status(processes, pre_queues, queues, SITES, lock):
     while True:
-        """
-        for site in processes.keys():
-            for proc in processes[site].keys():
-                if processes[site][proc]['conn'].poll(0.1):
-                    message = processes[site][proc]['conn'].recv()
-                    for item in message:
-                        lock.acquire()
-                        processes[site][proc][item[0]] = item[1]
-                        lock.release()
-                    #processes[site][proc]['conn'].send ("OK")
-        """
         for site in SITES:
             for pid in processes[site]:
                 if len(pre_queues[site]) > 0 and processes[site][pid]['status'] == "Idle":
@@ -282,15 +271,6 @@ def start_prm(main_conn):
             multiprocessing.active_children()
             #pre_q_to_q(processes, pre_queues, queues, SITES)
             msg_checker.join(0.1)
-            """
-            for site in processes.keys():
-                for proc in processes[site].keys():
-                    if processes[site][proc]['conn'].poll(0.1):
-                        message = processes[site][proc]['conn'].recv()
-                        for item in message:
-                            processes[site][proc][item[0]] = item[1]
-                        #processes[site][proc]['conn'].send("OK")
-            """
             pass
         request = socket.recv_json()
         try:
