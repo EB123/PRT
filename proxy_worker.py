@@ -30,9 +30,9 @@ def proxy_worker(q, conn, site, worker_num):
         answer = conn.recv()
         return answer
 
-    def run_next_step(proxy, step_name):
+    def run_next_step(proxy, step_name, *args):
         method = getattr(proxy, step_name)
-        result = method()
+        result = method(*args)
         return result
 
     def temp_logger(logging_q): # TODO - Create an async logging feature
@@ -103,12 +103,16 @@ def proxy_worker(q, conn, site, worker_num):
                         time.sleep(1)
                     logger.info("Checking dump again...", extra=me)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
+            release_procedure_args = {'release_proxy': ['version', 'md5', 'zip_file_dir']}
             for action in release_procedure:
                 ###message = [['step', action]]
                 ###prt_utils.message_to_prm(conn, message)
                 r.hmset(pid, {'step': action})
                 prt_utils.worker_get_instructions(conn, currentStatus, r)
-                logger.info("Process-%s: %s" % (os.getpid(),run_next_step(proxy, action)), extra=me)
+                args = None
+                if release_procedure_args.has_key(action):
+                    args = release_procedure_args[action]
+                logger.info("Process-%s: %s" % (os.getpid(),run_next_step(proxy, action, args)), extra=me)
 
             ###message = [['step', 'waiting_for_start']]
             ###prt_utils.message_to_prm(conn, message)
