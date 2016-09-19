@@ -12,12 +12,14 @@ import threading
 import mplog
 import proxy_worker
 import redis
-
+import requests
+import json
 
 ### Proxies For Test Purposes Only ###
 
-SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
-
+###SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
+SITES = ["OPS_PROXY", "OPS_PROXY_2"]
+"""
 ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
 ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12','ny4aproxy13', 'ny4aproxy14', 'ny4aproxy15', 'ny4aproxy16']
 ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27', 'ams2proxy28', 'ams2proxy29', 'ams2proxy30']
@@ -25,9 +27,10 @@ ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07', 'ams2proxy08', 'ams2proxy
 lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27', 'laxproxy28', 'laxproxy29']
 lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
 sg = ["sgproxy12", 'sgproxy13', 'sgproxy14', 'sgproxy15']
+"""
 
 basedir = os.getcwd()
-workers_conf_file = os.path.join(basedir, 'workers_for_release.conf')
+workers_conf_file = os.path.join(basedir, 'workers_for_release-dev.conf')
 
 #######################
 
@@ -118,7 +121,7 @@ def add_to_q(**kwargs):
             wasAdded.append(proxy)
     return "%s was added to queue!" % wasAdded
 
-def init_dictionaries(SITES, r):
+def init_dictionaries(r):
     processes = {}
     queues = {}
     pre_queues = {}
@@ -229,6 +232,7 @@ def processes_gc(processes, r, processes_lock):
 #TODO - There should be a regular process_checker, in case for some reasone a process dies
 
 
+
 def start_prm(main_conn):
     try:
         r = redis.StrictRedis(host='localhost', port=6379, db=1)
@@ -247,8 +251,7 @@ def start_prm(main_conn):
     logger.info("============================================================================", extra=me)
     logger.info("================================   PRM Has Started!  =======================", extra=me)
     logger.info("============================================================================", extra=me)
-    SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
-    processes, queues, pre_queues = init_dictionaries(SITES, r)
+    processes, queues, pre_queues = init_dictionaries(r)
     processes_lock = threading.Lock()
     prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'r': r,
         'processes_lock': processes_lock} # TODO - There should be an init func that returns prmDict with all its keys
