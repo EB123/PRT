@@ -141,3 +141,34 @@ def ajax_start_workers_for_release(request):
         return HttpResponseServerError(resp)
 
 
+def ajax_get_config(request):
+    try:
+        if request.method == "POST" and request.is_ajax():
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["prm", "get_config", ["r13"], {}])
+            resp = socket.recv_json()
+            socket.close()
+            data = []
+            sorted_keys = resp.keys()
+            sorted_keys.sort()
+            for key in sorted_keys:
+                data.append("<div class='enjoy-css4'>")
+                data.append("<p>%s: <input type='text' name='configs' data-confName='%s' value='%s'/></p>" % (
+                                                                                                key, key, resp[key]))
+                data.append("</div>")
+            return HttpResponse(data)
+    except Exception:
+        return HttpResponseServerError(resp)
+
+
+def ajax_update_config(request):
+    try:
+        if request.method == "POST" and request.is_ajax():
+            configs = json.loads(request.POST['ajaxarg_configs'])
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["prm", "update_config", ["r13"], {'configs': configs}])
+            resp = socket.recv_json()
+            socket.close()
+            return HttpResponse(json.dumps(resp))
+    except Exception:
+        return HttpResponseServerError(resp)

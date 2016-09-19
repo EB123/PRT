@@ -313,6 +313,22 @@ h3 {
 
 
 
+    $.fn.updateConfig = function( options, callbackFunc ) {
+        var settings = $.extend({configs:null}, options);
+        $.post("{% url 'ui:ajax_update_config' %}", {ajaxarg_configs:settings.configs, csrfmiddlewaretoken:'{{ csrf_token }}'},
+        function(data,status){
+            alert("The following configurations were updated: " + data);
+            $("#num_workers").load("{% url 'ui:ajax_auto_reload' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+                $('#sites').trigger('custReady-Pause');
+                $('#sites').trigger('custReady-Resume');
+                $('button').prop("disabled", false);
+            });
+        })
+        .fail(function(){
+            alert("error" + status);
+        });
+        return false;
+    };
 
 }(jQuery));
 </script>
@@ -505,6 +521,39 @@ $(document).ready(function(){
         });
    });
 
+   $(".configButton").on("click", function() {
+        $("#configButton").load("{% url 'ui:ajax_get_config' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $('#configButton').dialog({
+                modal:true,
+                width: 1200,
+                height: 550,
+                 buttons: {
+                    Submit: function() {
+                        var configs = new Array();
+                        $("input:text[name='configs']").each(function() {
+                            var key = $(this).attr("data-confName");
+                            var val = $(this).val();
+                            configs.push([key, val]);
+                        });
+                        $(this).updateConfig({ 'configs':JSON.stringify(configs)}, function(){
+                            $(this).removeClass('ui-state-focus');
+                        });
+
+                        $(this).dialog("close");
+                    },
+                    Cancel: function() {
+                        $(this).dialog("close");
+                    }
+                 },
+                    beforeClose: function() {
+                        $(this).dialog("destroy");
+                        $('button').prop("disabled", false);
+                }
+            });
+        });
+   });
+
+
 
 $(document).ajaxError(function(event, xhr, options) {
             alert(xhr.responseText);
@@ -528,12 +577,14 @@ $(".panicPause").click(function() {
 <div id="workersForRelease" style="display:none" class="queues">
 </div>
 
-
+<div id="configButton" style="display:none">
+</div>
 
 <p>Welcome to PRT!</p>
 <button class="show_queues" style="margin-right:2px"> Show Queues</button>
 <button class="workersForRelease" data-disabledInf="True"> Start Multiple Workers</button>
 <button class="panicPause" style="float:right">Panic Pause!</button>
+<input type="image" class="configButton" style="margin-left:50%;margin-right:-50%;width:3%;height:3%" src="{% static 'ui/config_wheel.png' %}"/>
 <div id="queues" class="queues" >
 </div>
 <div id="test_dialog">

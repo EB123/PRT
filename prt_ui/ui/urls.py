@@ -12,4 +12,6 @@ urlpatterns = [
     url(r'^ajax_get_default_num_workers', views.ajax_get_default_num_workers, name='ajax_get_default_num_workers'),
     url(r'^ajax_start_workers_for_release', views.ajax_start_workers_for_release,
                                             name='ajax_start_workers_for_release'),
+    url(r'^ajax_get_config', views.ajax_get_config, name='ajax_get_config'),
+    url(r'^ajax_update_config', views.ajax_update_config, name='ajax_update_config'),
 ]

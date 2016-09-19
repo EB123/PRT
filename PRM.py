@@ -206,6 +206,24 @@ def start_workers_for_release(**kwargs):
             response[site].append(pid)
     return response
 
+def get_config(**kwargs):
+    r13 = kwargs['r13']
+    config = r13.hgetall('config')
+    return config
+
+def update_config(**kwargs):
+    r13 = kwargs['r13']
+    configs = kwargs['configs']
+    response = []
+    current_config = r13.hgetall('config')
+    for item in configs:
+        key = item[0]
+        value = item[1]
+        if current_config[key] != value:
+            r13.hmset('config', {key:value})
+            response.append(key)
+    return response
+
 
 def get_workers_status(processes, pre_queues, queues, SITES, lock):
     while True:
@@ -230,13 +248,14 @@ def processes_gc(processes, r, processes_lock):
                     processes_lock.release()
         time.sleep(3)
 
-#TODO - There should be a regular process_checker, in case for some reasone a process dies
+#TODO - There should be a regular process_checker, in case for some reason a process dies
 
 
 
 def start_prm(main_conn):
     try:
         r = redis.StrictRedis(host='localhost', port=6379, db=1)
+        r13 = redis.StrictRedis(host='localhost', port=6379, db=13)
     except Exception: # TODO - add redis exception
         print "Cant connect to Redis!"
         sys.exit(1)
@@ -254,7 +273,7 @@ def start_prm(main_conn):
     logger.info("============================================================================", extra=me)
     processes, queues, pre_queues = init_dictionaries(r)
     processes_lock = threading.Lock()
-    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'r': r,
+    prmDict = {'processes': processes, 'queues': queues, 'pre_queues': pre_queues, 'r': r, 'r13': r13,
         'processes_lock': processes_lock} # TODO - There should be an init func that returns prmDict with all its keys
     toExit = False
     prmDict['sites_dict'] = {}
