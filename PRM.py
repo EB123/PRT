@@ -19,15 +19,7 @@ import json
 
 #SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg", "test"]
 SITES = ["OPS_PROXY", "OPS_PROXY_2"]
-ny_an = []
-ny_lb = []
-ams_an = []
-ams_lb = []
-lax_an = []
-lax_lb = []
-sg = []
-test = ["test-proxy03.test.peer39dom.com", "test-proxy05.test.peer39dom.com"]
-'''
+"""
 ny_an = ["nyproxy25", 'nyproxy26', 'nyproxy27', 'nyproxy28', 'nyproxy29', 'nyproxy30', 'nyproxy31']
 ny_lb = ["ny4aproxy10", 'ny4aproxy11', 'ny4aproxy12','ny4aproxy13', 'ny4aproxy14', 'ny4aproxy15', 'ny4aproxy16']
 ams_an =["ams2proxy25", 'ams2proxy26', 'ams2proxy27', 'ams2proxy28', 'ams2proxy29', 'ams2proxy30']
@@ -35,9 +27,10 @@ ams_lb = ["ams2proxy05", 'ams2proxy06', 'ams2proxy07', 'ams2proxy08', 'ams2proxy
 lax_an = ["laxproxy25", 'laxproxy26', 'laxproxy27', 'laxproxy28', 'laxproxy29']
 lax_lb = ["laxproxy15", 'laxproxy16', 'laxproxy17']
 sg = ["sgproxy12", 'sgproxy13', 'sgproxy14', 'sgproxy15']
-'''
+"""
+
 basedir = os.getcwd()
-workers_conf_file = os.path.join(basedir, 'workers_for_release.conf')
+workers_conf_file = os.path.join(basedir, 'workers_for_release-dev.conf')
 
 #######################
 
@@ -62,24 +55,9 @@ def process_validator(func):
     return validator
 
 
-def getServersInComp(comp, env='dev'):
-    compsvc = {'dev': 'dev-compsvc01.dev.peer39dom.com'} # TODO - Add prod compsvc
-    compsvc_port = '8080'
-    url = 'http://%s:%s/ComponentsService/component/%s' % (compsvc[env], compsvc_port, comp)
-    resp = requests.get(url)
-    servers = {}
-    if resp.status_code == 200:
-        jresp = json.loads(resp.text)
-        for server in jresp['result']['components']:
-            if server['groupName'].startswith('OPS_PROXY'):
-                if not servers.has_key(server['groupName']):
-                    servers[server['groupName']] = []
-                servers[server['groupName']].append(server['machineName'])
-        return servers
-    else:
-        raise RuntimeError("Failed to get comp list")
 
-
+def test():
+    return "This Is Test Func"
 
 def active_proxy_workers(**kwargs):
     #sites_dict = kwargs['sites_dict']
