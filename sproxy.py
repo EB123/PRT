@@ -17,7 +17,8 @@ class sProxy:
         self.sshconn = self._sshconnect(name, user, is_test)
         self.port = port
         self.proxy_pl_port = proxy_pl_port
-        self.base_cmd = '. ./.paramiko_profile ; '
+        #self.base_cmd = '. ./.paramiko_profile ; '
+        self.base_cmd = ''
         self.is_test = is_test
         self.compsvc = {'address': 'dev-compsvc01.dev.peer39dom.com', 'port': '8080'}
         self.logger = self._configLogger(log_dir)
@@ -80,6 +81,7 @@ class sProxy:
     def _configLogger(self, log_dir):
         logger = logging.getLogger("%s-%s" %(__name__, self.name.split('.')[0]))
         logger.setLevel(logging.DEBUG)
+        logger.propagate = False
         logfile = os.path.join(log_dir, "%s.log" % self.name.split('.')[0])
         logfile_handler = RotatingFileHandler(logfile, maxBytes=102400)
         for handler in logger.handlers:
@@ -103,7 +105,7 @@ class sProxy:
                                                                             self.compsvc['port'], group, self.name, job)
         custHeaders = {'Content-Type': 'application/json', 'Accept': 'application/json'}
         response = requests.put(compsvc_url, headers=custHeaders, data = json_data)
-        json_response = json.loads(response.text)
+        #json_response = json.loads(response.text)
         return response
 
     def jobCheckState(self, job, group='all'):
@@ -139,7 +141,7 @@ class sProxy:
         # TODO - Create stop_proxy func
         if self.is_test:
             is_stopped = False
-            cmd = "jps -l | grep catalina | awk '{print $1}'"
+            cmd = "runuser -l peeradmin -c \"jps -l | grep catalina | awk '{print $1}'\""
             exitCode, output, error = self._ssh_execute(self.sshconn, self.base_cmd + cmd)
             if exitCode == 0:
                 catalina_pid = output[0]
@@ -231,8 +233,7 @@ class sProxy:
             try:
                 response = requests.get(url, timeout=10) # TODO - add timeout
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-                print "No response from proxy!"
-                raise
+                return {'lb_status': 'error', 'an_status': 'error'} # TODO - create an exception
             status[path] = response.text.strip() # TODO - check status_code
         return status
 

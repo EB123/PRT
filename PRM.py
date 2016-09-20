@@ -15,6 +15,9 @@ import redis
 import requests
 import json
 
+# TODO - scenario1: Proxy is down at the beginning of the release process (before check_dump_age)
+
+
 ### Proxies For Test Purposes Only ###
 
 ###SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
@@ -241,8 +244,8 @@ def processes_gc(processes, r, processes_lock):
         for site in processes.keys():
             for pid in processes[site].keys():
                 if not processes[site][pid]['proc'].is_alive():
-                    r.srem(site, processes[site][pid]['pid'])
-                    r.delete(processes[site][pid]['pid'])
+                    r.srem(site, pid)
+                    r.delete(pid)
                     processes_lock.acquire()
                     processes[site].pop(pid)
                     processes_lock.release()
