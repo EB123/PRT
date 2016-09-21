@@ -195,7 +195,7 @@ def ajax_show_eventlog(request):
             resp = socket.recv_json()
             socket.close()
             data = []
-            keys = ['Proxy', 'Start Time', 'Finish Time', 'Status', 'Version']
+            keys = ['Proxy', 'Start Time', 'Finish Time', 'Status', 'Old Version', 'New Version']
             data.append("<table>")
             data.append("<div id='search_list'>")
             data.append("<tr>")
@@ -214,7 +214,10 @@ def ajax_show_eventlog(request):
                 data.append("<tr>")
                 data.append("<td>%s</td>" % event[0])
                 for key in keys:
-                    data.append("<td>%s</td>" % event[1][key])
+                    try:
+                        data.append("<td>%s</td>" % event[1][key])
+                    except KeyError:
+                        data.append("<td>-</td>")
                 data.append("</tr>")
             data.append("</div>")
             data.append("</table>")

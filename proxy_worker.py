@@ -96,26 +96,28 @@ def proxy_worker(q, conn, site, worker_num):
 
             """Got new proxy to work on, starting release process"""
 
+            proxy = sproxy.sProxy(p, is_test=True)
+            currentStatus = "Busy"
+            currentProxy = p
+            currentStep = "check_dump_age"
+            r.hmset(pid, {'status': currentStatus, 'working_on': currentProxy, 'step': currentStep})
+            logger.info("Got a new proxy to work on: %s" % p, extra=me)
             eventid_num = r14.incr('last_eventid')
             eventid = "Event-%s" % eventid_num
             start_date = datetime.datetime.now()
             start_date_day = start_date.strftime('%d/%m/%Y')
             start_date_month = start_date.strftime('%m/%Y')
             start_date_year = start_date.strftime('%Y')
-            index_eventid(r14, eventid, *[start_date_day, start_date_month, start_date_year])
-            currentStatus = "Busy"
-            currentProxy = p
-            currentStep = "check_dump_age"
             config = r13.hgetall('config')
+            currentVersion = proxy.query_proxy('version').rstrip()
             update_eventlog(r14, eventid, **{'Start Time': start_date.strftime('%d/%m/%Y %H:%M:%S'),
-                        'Finish Time': '-', 'Proxy': p, 'Version': config['version'], 'Status': 'Started'})
+                                            'Finish Time': '-', 'Proxy': proxy.name, 'Old Version': currentVersion,
+                                                                'New Version': config['version'], 'Status': 'Started'})
+            index_eventid(r14, eventid, *[start_date_day, start_date_month, start_date_year])
             release_procedure_kwargs = {'release_proxy': {'version': config['version'],
                                                         'md5': config['md5'], 'zip_file_dir': config['zip_file_dir']}}
             ###message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             ###prt_utils.message_to_prm(conn, message)
-            r.hmset(pid, {'status': currentStatus, 'working_on': currentProxy, 'step': currentStep})
-            logger.info("Got a new proxy to work on: %s" % p, extra=me)
-            proxy = sproxy.sProxy(p, is_test=True)
             while proxy.check_dump_age() > 50: # If dump age is more than 54 minutes - Create new dump
                 logger.info("Dump is to old, creating new dump file", extra=me)
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['reschedule1h']))
@@ -156,7 +158,7 @@ def proxy_worker(q, conn, site, worker_num):
             ###message = [['step', 'waiting_for_start']]
             ###prt_utils.message_to_prm(conn, message)
             r.hmset(pid, {'step': 'waiting_for_start'})
-            update_eventlog(r14, eventid, **{'Status': 'Started'})
+            update_eventlog(r14, eventid, **{'Status': 'Proxy Started'})
             proxy_state = proxy.check_state()
             while proxy_state['lb_status'] != "rrr":
                 logger.info("Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name), extra=me)

@@ -137,6 +137,13 @@ class sProxy:
         response = requests.get(url, params={'key': 'dump_age_min'})
         return float(response.text.split()[0]) # TODO - check status_code, if not 200 - raise
 
+
+    def query_proxy(self, key):
+        proxy_pl_path = '/ops/cgi-bin/proxy.pl'
+        url = 'http://%s:%s%s' % (self.name, self.proxy_pl_port, proxy_pl_path)
+        response = requests.get(url, params={'key': key})
+        return response.text  # TODO - check status_code, if not 200 - raise
+
     def stop_proxy(self, retries = 100): # TODO - handle scenario that proxy is already stopped
         # TODO - Create stop_proxy func
         if self.is_test:

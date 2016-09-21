@@ -38,7 +38,10 @@ def get_eventlog(**kwargs):
     all_events = []
     for event in events_list:
         event_hash = r14.hgetall(event)
-        event_hash['Proxy'] = event_hash['Proxy'].split('.')[0]
+        try:
+            event_hash['Proxy'] = event_hash['Proxy'].split('.')[0]
+        except KeyError:
+            pass
         all_events.append([event, event_hash])
     all_events.sort(key = lambda x:x[0], reverse=True)
     return all_events
