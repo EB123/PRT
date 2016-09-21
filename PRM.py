@@ -159,9 +159,12 @@ def pause_or_resume_worker(**kwargs):
         conn.send(action)
         while not conn.poll(0.1):
             pass
-        message = conn.recv()
-        for item in message:
-            processes[site][pid][item[0]] = item[1]
+        conn.recv()
+        if action == 'stop':
+            while processes[site].has_key(pid):
+                time.sleep(0.1)
+        #for item in message:
+            #processes[site][pid][item[0]] = item[1]
         #conn.send("OK")
         return "Process %s is now %sd" % (pid, action)
     except Exception as e:

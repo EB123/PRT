@@ -28,13 +28,23 @@ def active_proxy_workers(**kwargs):
             pid_hash = r1.hgetall(pid)
             active_count[site]['workers'][pid] = {}
             active_count[site]['workers'][pid]['status'] = pid_hash['status']
-            active_count[site]['workers'][pid]['working_on'] = pid_hash['working_on']
+            active_count[site]['workers'][pid]['working_on'] = pid_hash['working_on'].split('.')[0]
             active_count[site]['workers'][pid]['step'] = pid_hash['step']
     return active_count
 
+def get_eventlog(**kwargs):
+    r14 = kwargs['r14']
+    events_list = r14.keys(pattern='Event-*')
+    all_events = []
+    for event in events_list:
+        event_hash = r14.hgetall(event)
+        event_hash['Proxy'] = event_hash['Proxy'].split('.')[0]
+        all_events.append([event, event_hash])
+    all_events.sort(key = lambda x:x[0], reverse=True)
+    return all_events
 
-def getServersFromComp(comp, env='dev'):
-    r = redis.StrictRedis(host='localhost', port=6379, db=12)
+def getServersFromComp(r12, comp, env='dev'):
+
     compsvc = {'dev': 'dev-compsvc01.dev.peer39dom.com'} # TODO - Add prod compsvc
     compsvc_port = '8080'
     url = 'http://%s:%s/ComponentsService/component/%s' % (compsvc[env], compsvc_port, comp)
@@ -47,8 +57,8 @@ def getServersFromComp(comp, env='dev'):
                 if not servers.has_key(server['groupName']):
                     servers[server['groupName']] = []
                 servers[server['groupName']].append(server['machineName'])
-                r.rpush(server['groupName'], server['machineName'])
-        return r, servers
+                r12.rpush(server['groupName'], server['machineName'])
+        return servers
     else:
         raise RuntimeError("Failed to get comp list")
 
@@ -56,11 +66,13 @@ def start_mon(main_conn):
 
     try:
         r1 = redis.StrictRedis(host='localhost', port=6379, db=1)
+        r12 = redis.StrictRedis(host='localhost', port=6379, db=12)
+        r14 = redis.StrictRedis(host='localhost', port=6379, db=14)
     except Exception: # TODO - add redis exception
         print "Cant connect to Redis!"
         sys.exit(1)
-    r12, servers = getServersFromComp('proxy')
-    monDict = {'r1': r1, 'r12': r12, 'servers': servers}
+    servers = getServersFromComp(r12, 'proxy')
+    monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers}
     this_module = sys.modules[__name__]
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5558", zmq.REP, "bind")
     while True:

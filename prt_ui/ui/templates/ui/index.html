@@ -9,6 +9,31 @@
     <script src="{% static 'ui/js/jquery-ui.min.js' %}" ></script>
 <style>
 
+    table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 95%;
+    margin-left: 2%;
+    margin-bottom: 3%;
+}
+
+td, th {
+    border: 1px solid #000304;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+}
+
+td {
+ background: -webkit-linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background: -moz-linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background: linear-gradient(45deg, rgba(131,131,158,0.65) 0, rgba(112,131,239,0.65) 71%, rgba(112,131,239,0.65) 100%);
+  background-position: 50% 50%;
+
+}
+
     #addToQueue {
 
     }
@@ -118,7 +143,7 @@
   -o-text-overflow: ellipsis;
   text-overflow: ellipsis;
         width: 95%;
-    height: 20vh;
+    height: 38vh;
     overflow: auto !important;
     border-style: solid;
     border-width: 2px !important;
@@ -169,6 +194,18 @@
     top: 2px;
     }
 .pause_worker.active {
+    top: 2px;
+    box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+
+.stop_worker {
+    position: relative;
+    box-shadow: 0 6px 8.5px 3px rgba(0,0,0,.7), inset 0px -3px 1px 1px rgba(204,198,197,.5);
+    }
+.stop_worker:active {
+    top: 2px;
+    }
+.stop_worker.active {
     top: 2px;
     box-shadow: 0 0.3px 0.7px 0 rgba(0,0,0,.4), inset 0px -3px 1px 1px rgba(204,198,197,.5);
     }
@@ -386,6 +423,20 @@ $(document).ready(function(){
 
   });
 
+
+  $('#sites').on("click", ".stop_worker", function(event){
+    var target_button = event.target.id;
+    var site_name = $("#"+target_button).closest("div").attr("id");
+    var pid = $("#"+target_button).attr("value");
+    var action = $("#"+target_button).attr("class").split(" ")[0];
+    $("#"+target_button).pauseOrResumeWorker({site: site_name, pid: pid, action: action}, function(){
+    });
+
+
+  });
+
+
+
   $("#sites").on("click", ".Add-Worker", function(){
     var lock = $(".Add-Worker").attr("data-locked");
     if (lock == "True") {
@@ -460,6 +511,25 @@ $(document).ready(function(){
                 height: 850,
                 buttons: {
                     Ok: function() {
+                    $(this).dialog("close");
+                    }
+                },
+                beforeClose: function() {
+                    $('button').prop("disabled", false);
+                }
+            });
+        });
+   });
+
+
+   $(".eventLog").on("click", function() {
+        $("#eventLog").load("{% url 'ui:ajax_show_eventlog' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            $('#eventLog').dialog({
+                modal:true,
+                width: 1200,
+                height: 850,
+                buttons: {
+                    Close: function() {
                     $(this).dialog("close");
                     }
                 },
@@ -584,9 +654,12 @@ $(".panicPause").click(function() {
 <p>Welcome to PRT!</p>
 <button class="show_queues" style="margin-right:2px"> Show Queues</button>
 <button class="workersForRelease" data-disabledInf="True"> Start Multiple Workers</button>
+<button class="eventLog">Event Log</button>
 <button class="panicPause" style="float:right">Panic Pause!</button>
 <input type="image" class="configButton" style="margin-left:50%;margin-right:-50%;width:3%;height:3%" src="{% static 'ui/config_wheel.png' %}"/>
 <div id="queues" class="queues" >
+</div>
+<div id="eventLog">
 </div>
 <div id="test_dialog">
 </div>
@@ -606,13 +679,28 @@ $(".panicPause").click(function() {
             </fieldset>
     </form>
 <h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
-<ul>
+<table>
+    {% if site_hash.workers.items %}
+        <tr>
+            <th>Worker ID</th>
+            <th>Status</th>
+            <th>Working On</th>
+            <th>Step</th>
+        </tr>
     {% for pid, proc_hash in site_hash.workers.items %}
-        <li class="workers">{{pid}} - status: {{proc_hash.status}}, currently working on: {{proc_hash.working_on}}, step: {{proc_hash.step}}
+      <tr>
+        <td>{{pid}}</td>
+        <td>{{proc_hash.status}}</td>
+        <td>{{proc_hash.working_on}}</td>
+        <td>{{proc_hash.step}}</td>
+        <td>
         <button  style="margin-right:2px" id="{{pid}}-start" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="resume_worker">&#9658;</button>
-        <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause_worker">&#9646;&#9646;</button></li>
+        <button  style="margin-top:0" id="{{pid}}-pause" value="{{pid}}" data-pressed="{{proc_hash.status}}" class="pause_worker">&#9646;&#9646;</button>
+        <button  style="margin-top:0" id="{{pid}}-stop" value="{{pid}}" data-pressed="False" class="stop_worker">&#9609;</button></td>
+      </tr>
     {% endfor %}
-</ul>
+    {% endif %}
+</table>
 
 
 </div>

@@ -11,7 +11,7 @@ import logging
 import threading
 import redis
 import json
-
+import datetime
 
 def proxy_worker(q, conn, site, worker_num):
 
@@ -50,13 +50,24 @@ def proxy_worker(q, conn, site, worker_num):
         logger.root.addHandler(ch)
         return logger
 
+    def update_eventlog(r14, eventid, **kwargs):
+        for kwarg in kwargs:
+            r14.hmset(eventid, {kwarg:kwargs[kwarg]})
+        return
+
+
+    def index_eventid(r14, eventid, *args):
+        for arg in args:
+            r14.sadd(arg, eventid)
+        return
 
 
 
     try:
         try:
-            r = redis.StrictRedis(host='localhost', port=6379, db=1)
-            r13 = redis.StrictRedis(host='localhost', port=6379, db=13)
+            r = redis.StrictRedis(host='localhost', port=6379, db=1) # Processes DB
+            r13 = redis.StrictRedis(host='localhost', port=6379, db=13) # Queues DB
+            r14 = redis.StrictRedis(host='localhost', port=6379, db=14) # EventLog DB
         except Exception:  # TODO - add redis exception
             print "Cant connect to Redis!"
             sys.exit(1)
@@ -85,9 +96,21 @@ def proxy_worker(q, conn, site, worker_num):
 
             """Got new proxy to work on, starting release process"""
 
+            eventid_num = r14.incr('last_eventid')
+            eventid = "Event-%s" % eventid_num
+            start_date = datetime.datetime.now()
+            start_date_day = start_date.strftime('%d/%m/%Y')
+            start_date_month = start_date.strftime('%m/%Y')
+            start_date_year = start_date.strftime('%Y')
+            index_eventid(r14, eventid, *[start_date_day, start_date_month, start_date_year])
             currentStatus = "Busy"
             currentProxy = p
             currentStep = "check_dump_age"
+            config = r13.hgetall('config')
+            update_eventlog(r14, eventid, **{'Start Time': start_date.strftime('%d/%m/%Y %H:%M:%S'),
+                        'Finish Time': '-', 'Proxy': p, 'Version': config['version'], 'Status': 'Started'})
+            release_procedure_kwargs = {'release_proxy': {'version': config['version'],
+                                                        'md5': config['md5'], 'zip_file_dir': config['zip_file_dir']}}
             ###message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             ###prt_utils.message_to_prm(conn, message)
             r.hmset(pid, {'status': currentStatus, 'working_on': currentProxy, 'step': currentStep})
@@ -96,6 +119,11 @@ def proxy_worker(q, conn, site, worker_num):
             while proxy.check_dump_age() > 50: # If dump age is more than 54 minutes - Create new dump
                 logger.info("Dump is to old, creating new dump file", extra=me)
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['reschedule1h']))
+                i = 1
+                while 'PAUSED' in json.loads(proxy.jobCheckState('CacheDumpJob').text)['result']['daemons'][0]['state']:
+                    if i % 10 == 0:
+                        proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['reschedule1h']))
+                    time.sleep(1)
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['pause']))
                 ###message = [['step', 'waiting for cacheDump']]
                 r.hmset(pid, {'step': 'waiting for cacheDump'})
@@ -107,9 +135,8 @@ def proxy_worker(q, conn, site, worker_num):
                         time.sleep(1)
                     logger.info("Checking dump again...", extra=me)
             release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
-            config = r13.hgetall('config')
-            release_procedure_kwargs = {'release_proxy': {'version': config['version'],
-                                                    'md5': config['md5'], 'zip_file_dir': config['zip_file_dir']}}
+
+
             for action in release_procedure:
                 ###message = [['step', action]]
                 ###prt_utils.message_to_prm(conn, message)
@@ -123,11 +150,13 @@ def proxy_worker(q, conn, site, worker_num):
                 else:
                     result = run_next_step(proxy, action)
                 logger.info("Step result: %s" % result, extra=me)
+                update_eventlog(r14, eventid, **{'Status': action})
 
 
             ###message = [['step', 'waiting_for_start']]
             ###prt_utils.message_to_prm(conn, message)
             r.hmset(pid, {'step': 'waiting_for_start'})
+            update_eventlog(r14, eventid, **{'Status': 'Started'})
             proxy_state = proxy.check_state()
             while proxy_state['lb_status'] != "rrr":
                 logger.info("Process-%s: Waiting for %s to become ready..." % (os.getpid(), proxy.name), extra=me)
@@ -138,8 +167,12 @@ def proxy_worker(q, conn, site, worker_num):
             proxy.in_out_rotation('an', 'in')
             proxy.in_out_rotation('lb', 'in')
             logger.info("Finished release process for %s" % proxy.name, extra=me)
+            finish_date = datetime.datetime.now()
+            update_eventlog(r14, eventid, **{'Status': 'Finished',
+                                             'Finish Time':finish_date.strftime('%d/%m/%Y %H:%M:%S')})
             r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
             ##stopWorker = talk_with_prm(conn, "toStop?")
 
     except Exception as e:
+        update_eventlog(r14, eventid, **{'Status': 'Failed'})
         raise

@@ -20,17 +20,21 @@ def worker_get_instructions(conn, currentStatus, r):
             instructions = conn.recv()
             while instructions == "pause":
                 if not notified:
-                    message = [["status", "Paused"]]
-                    message_to_prm(conn, message)
+                    #message = [["status", "Paused"]]
+                    #message_to_prm(conn, message)
                     r.hmset(os.getpid(), {'status': 'Paused'})
+                    conn.send("ok")
                     notified = True
                 if conn.poll(0.1):
                     instructions = conn.recv()
-                    message = [["status", currentStatus]]
-                    message_to_prm(conn, message)
+                    #message = [["status", currentStatus]]
+                    #message_to_prm(conn, message)
                     r.hmset(os.getpid(), {'status': currentStatus})
+                    conn.send("ok")
             if instructions == "stop":
-                raise Exception  # TODO - Create sproxy.stop_instruction exception
+                ##raise Exception  # TODO - Create sproxy.stop_instruction exception
+                conn.send("ok")
+                sys.exit()
     except Exception as e:
         raise
 

@@ -55,14 +55,27 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
         data.append("</fieldset>")
         data.append("</form>")
         data.append("<h3>%s: %d active workers</h3>" % (site, resp[site]['active_workers']))
-        data.append("<ul>")
-        for pid in resp[site]['workers']:
-            proc_hash = resp[site]['workers'][pid]
-            data.append("<li class='workers'>%s - status: %s, currently working on: %s, step: %s" % (pid, proc_hash['status'], proc_hash['working_on'],
-                                                                                                           proc_hash['step']))
-            data.append("<button  style='margin-right:4px; margin-left:6px' id='%s-start' value='%s' data-pressed='%s' class='resume_worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
-            data.append("<button  style='margin-top:0' id='%s-pause' value='%s' data-pressed='%s' class='pause_worker'>&#9646;&#9646;</button></li>" % (pid, pid, proc_hash['status']))
-        data.append("</ul>")
+        data.append("<table>")
+        if resp[site]['workers']:
+            data.append("<tr>")
+            data.append("<th>Worker ID</th>")
+            data.append("<th>Status</th>")
+            data.append("<th>Working On</th>")
+            data.append("<th>Step</th>")
+            data.append("</tr>")
+            for pid in resp[site]['workers']:
+                data.append("<tr>")
+                proc_hash = resp[site]['workers'][pid]
+                data.append("<td>%s</td>" % pid)
+                data.append("<td>%s</td>" % proc_hash['status'])
+                data.append("<td>%s</td>" % proc_hash['working_on'])
+                data.append("<td>%s</td>" % proc_hash['step'])
+                data.append("<td>")
+                data.append("<button  style='margin-right:4px; margin-left:6px' id='%s-start' value='%s' data-pressed='%s' class='resume_worker'>&#9658;</button>" % (pid, pid, proc_hash['status']))
+                data.append("<button  style='margin-top:0;margin-right:4px' id='%s-pause' value='%s' data-pressed='%s' class='pause_worker'>&#9646;&#9646;</button>" % (pid, pid, proc_hash['status']))
+                data.append("<button  style='margin-top:0' id='%s-stop' value='%s' class='stop_worker'>&#9609;</button></td>" % (pid, pid))
+                data.append("</tr>")
+        data.append("</table>")
         data.append("</div>")
     return HttpResponse(data)
     #return data
@@ -172,3 +185,39 @@ def ajax_update_config(request):
             return HttpResponse(json.dumps(resp))
     except Exception:
         return HttpResponseServerError(resp)
+
+
+def ajax_show_eventlog(request):
+    try:
+        if request.method == "POST" and request.is_ajax():
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["mon", "get_eventlog", ["r14"], {}])
+            resp = socket.recv_json()
+            socket.close()
+            data = []
+            keys = ['Proxy', 'Start Time', 'Finish Time', 'Status', 'Version']
+            data.append("<table>")
+            data.append("<div id='search_list'>")
+            data.append("<tr>")
+            data.append("<th>Event</th>")
+            """
+            data.append("<th>Proxy</th>")
+            data.append("<th>Start Time</th>")
+            data.append("<th>Finish Time</th>")
+            data.append("<th>Version</th>")
+            data.append("<th>Status</th>")
+            """
+            for key in keys:
+                data.append("<th>%s</th>" % key)
+            data.append("</tr>")
+            for event in resp:
+                data.append("<tr>")
+                data.append("<td>%s</td>" % event[0])
+                for key in keys:
+                    data.append("<td>%s</td>" % event[1][key])
+                data.append("</tr>")
+            data.append("</div>")
+            data.append("</table>")
+            return HttpResponse(data)
+    except Exception as e:
+        return HttpResponseServerError(e)
