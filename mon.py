@@ -22,6 +22,7 @@ def active_proxy_workers(**kwargs):
         active_count[site]['workers'] = {}
         active_count[site]['active_workers'] = r1.scard(site_processes)
         active_count[site]['proxies'] = r12.lrange(site, 0, -1)
+        active_count[site]['proxies'].sort()
         #active_count[site]['proxies'] = servers[site]
         for pid in iter(site_processes):
             pid_hash = r1.hgetall(pid)

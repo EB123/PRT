@@ -78,9 +78,7 @@ def proxy_worker(q, conn, site, worker_num):
                 try:
                     prt_utils.worker_get_instructions(conn, currentStatus, r)
                     if not q.empty():
-                        print q.get_items()
                         p = q.get(block=False)
-                        print p
                     time.sleep(0.3)
                 except Queue.Empty:
                     pass
@@ -90,19 +88,20 @@ def proxy_worker(q, conn, site, worker_num):
             currentStatus = "Busy"
             currentProxy = p
             currentStep = "check_dump_age"
-            message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
+            ###message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             ###prt_utils.message_to_prm(conn, message)
             r.hmset(pid, {'status': currentStatus, 'working_on': currentProxy, 'step': currentStep})
             logger.info("Got a new proxy to work on: %s" % p, extra=me)
             proxy = sproxy.sProxy(p, is_test=True)
             while proxy.check_dump_age() > 50: # If dump age is more than 54 minutes - Create new dump
-                logger.info("Dump is to old...", extra=me)
+                logger.info("Dump is to old, creating new dump file", extra=me)
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['reschedule1h']))
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['pause']))
                 ###message = [['step', 'waiting for cacheDump']]
                 r.hmset(pid, {'step': 'waiting for cacheDump'})
                 ###prt_utils.message_to_prm(conn, message)
-                while proxy.check_dump_age() > 50:
+                while proxy.check_dump_age() > 50: # TODO - if for some reason the dump creation failed, this will be
+                                                   # an infinite loop
                     for i in range(30):
                         prt_utils.worker_get_instructions(conn, currentStatus, r)
                         time.sleep(1)
@@ -115,6 +114,7 @@ def proxy_worker(q, conn, site, worker_num):
                 ###message = [['step', action]]
                 ###prt_utils.message_to_prm(conn, message)
                 r.hmset(pid, {'step': action})
+                logger.info("Next step: %s" % action, extra=me)
                 prt_utils.worker_get_instructions(conn, currentStatus, r)
                 kwargs = None
                 if release_procedure_kwargs.has_key(action):
@@ -122,7 +122,7 @@ def proxy_worker(q, conn, site, worker_num):
                     result = run_next_step(proxy, action, **kwargs)
                 else:
                     result = run_next_step(proxy, action)
-                logger.info("Process-%s: %s" % (os.getpid(), result), extra=me)
+                logger.info("Step result: %s" % result, extra=me)
 
 
             ###message = [['step', 'waiting_for_start']]
@@ -137,6 +137,7 @@ def proxy_worker(q, conn, site, worker_num):
                 proxy_state = proxy.check_state()
             proxy.in_out_rotation('an', 'in')
             proxy.in_out_rotation('lb', 'in')
+            logger.info("Finished release process for %s" % proxy.name, extra=me)
             r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
             ##stopWorker = talk_with_prm(conn, "toStop?")
 

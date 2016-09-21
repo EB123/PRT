@@ -141,16 +141,14 @@ class sProxy:
         # TODO - Create stop_proxy func
         if self.is_test:
             is_stopped = False
-            cmd = "runuser -l peeradmin -c \"jps -l | grep catalina | awk '{print $1}'\""
+            cmd = "runuser -l peeradmin -c 'jps -l | grep catalina '"
             exitCode, output, error = self._ssh_execute(self.sshconn, self.base_cmd + cmd)
             if exitCode == 0:
-                catalina_pid = output[0]
-                print catalina_pid
-            cmd = "jps -l | grep rmi.registry | awk '{print $1}'"
+                catalina_pid = output[0].split(" ")[0]
+            cmd = "jps -l | grep rmi.registry"
             exitCode, output, error = self._ssh_execute(self.sshconn, self.base_cmd + cmd)
             if exitCode == 0:
-                rmi_pid = output[0]
-                print rmi_pid
+                rmi_pid = output[0].split(" ")[0]
             pids = {catalina_pid: True, rmi_pid: True}
             retry = 1
             while not is_stopped and retry < retries:
@@ -165,7 +163,9 @@ class sProxy:
                 if not pids[catalina_pid] and not pids[rmi_pid]:
                     is_stopped = True
                 retry += 1
-            return is_stopped
+            cmd = 'runuser -l peeradmin -c "jps -l | grep -v jps | wc -l"'
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
+            return "jps -l | grep -v jps | wc -l --> output is: %s" % output
         else:
             return "Not allowd on production proxies"
 
@@ -181,30 +181,27 @@ class sProxy:
                 raise RuntimeError("Wrong MD5!!!")
             base_dir = '/workspace/test/proxy'
             new_ver_path = os.path.join(base_dir, 'peer39-proxy-%s' % version)
-            print new_ver_path
             cmd = "rm -rf %s; unlink %s/peer39-proxy" % (new_ver_path, base_dir)
-            print cmd
             exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             cmd = "%s 'cd %s && mkdir peer39-proxy-%s && cd peer39-proxy-%s && cp -f %s . && unzip %s'" % \
                   (runuser, base_dir, version, version, zip_file_path, zip_file)
-            print cmd
             exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             cmd = "%s 'cd %s && ln -s peer39-proxy-%s peer39-proxy'" % (runuser, base_dir, version)
-            print cmd
             exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
             scripts_dir = '/workspace/development/org/apache/tomcat/6.0.29/webapps/ROOT/WEB-INF/scripts'
             cmd = "%s 'cd %s && chmod 775 *.sh && dos2unix *.sh'" % (runuser, scripts_dir)
-            print cmd
             exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
             if exitCode != 0:
                 raise RuntimeError("output is: %s\n error is: %s" % (output, error))
-        return
+            cmd = "ls -l /workspace/test/proxy | grep -v total | awk '{print $9$10$11}' | head -1"
+            exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
+        return output
 
     def start_proxy(self):
         # TODO - Create start_proxy func
@@ -220,7 +217,7 @@ class sProxy:
                 if exitCode == 0:
                     cmd = "runuser -l peeradmin -c 'jps -l | wc -l'"
                     exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
-        return exitCodes, output
+        return "jps -l | wc -l --> output is: %s" % output
 
     def check_state(self):
         # TODO - Create check_proxy_state func
