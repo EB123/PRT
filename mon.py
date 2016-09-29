@@ -65,16 +65,26 @@ def getServersFromComp(r12, comp, env='dev'):
     else:
         raise RuntimeError("Failed to get comp list")
 
+
+def load_time_values(r13):
+    steps = r13.smembers('steps')
+    time_values = {}
+    for step in iter(steps):
+        time_values[step] = r13.hgetall('%s:time_values' % step)
+    return time_values
+
 def start_mon(main_conn):
 
     try:
         r1 = redis.StrictRedis(host='localhost', port=6379, db=1)
         r12 = redis.StrictRedis(host='localhost', port=6379, db=12)
+        r13 = redis.StrictRedis(host='localhost', port=6379, db=13)
         r14 = redis.StrictRedis(host='localhost', port=6379, db=14)
     except Exception: # TODO - add redis exception
         print "Cant connect to Redis!"
         sys.exit(1)
     servers = getServersFromComp(r12, 'proxy')
+    time_values = load_time_values(r13)
     monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers}
     this_module = sys.modules[__name__]
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5558", zmq.REP, "bind")

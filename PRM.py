@@ -269,7 +269,7 @@ def start_prm(main_conn):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     this_module = sys.modules[__name__]
-    mpHandler = mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0)
+    mpHandler = mplog.MultiProcessingLog(name="/tmp/prm.log", mode='a', maxsize=1024, rotate=0)
     mpHandler.setFormatter(formatter)
     #logger.addHandler(mplog.MultiProcessingLog(name="/tmp/testmplog.txt", mode='a', maxsize=1024, rotate=0))
     logger.root.addHandler(mpHandler)

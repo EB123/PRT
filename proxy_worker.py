@@ -128,7 +128,7 @@ def proxy_worker(q, conn, site, worker_num):
                     time.sleep(1)
                 proxy.jobChangeState('CacheDumpJob', json.dumps(CacheDumpJob_data['pause']))
                 ###message = [['step', 'waiting for cacheDump']]
-                r.hmset(pid, {'step': 'waiting for cacheDump'})
+                r.hmset(pid, {'step': 'waiting for cacheDump', 'step_start_time': time.time()})
                 ###prt_utils.message_to_prm(conn, message)
                 while proxy.check_dump_age() > 50: # TODO - if for some reason the dump creation failed, this will be
                                                    # an infinite loop
@@ -142,7 +142,7 @@ def proxy_worker(q, conn, site, worker_num):
             for action in release_procedure:
                 ###message = [['step', action]]
                 ###prt_utils.message_to_prm(conn, message)
-                r.hmset(pid, {'step': action})
+                r.hmset(pid, {'step': action, 'step_start_time': time.time()})
                 logger.info("Next step: %s" % action, extra=me)
                 prt_utils.worker_get_instructions(conn, currentStatus, r)
                 kwargs = None
@@ -157,7 +157,7 @@ def proxy_worker(q, conn, site, worker_num):
 
             ###message = [['step', 'waiting_for_start']]
             ###prt_utils.message_to_prm(conn, message)
-            r.hmset(pid, {'step': 'waiting_for_start'})
+            r.hmset(pid, {'step': 'waiting_for_start', 'step_start_time': time.time()})
             update_eventlog(r14, eventid, **{'Status': 'Proxy Started'})
             proxy_state = proxy.check_state()
             while proxy_state['lb_status'] != "rrr":
@@ -172,7 +172,7 @@ def proxy_worker(q, conn, site, worker_num):
             finish_date = datetime.datetime.now()
             update_eventlog(r14, eventid, **{'Status': 'Finished',
                                              'Finish Time':finish_date.strftime('%d/%m/%Y %H:%M:%S')})
-            r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
+            r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None, 'step_start_time': None})
             ##stopWorker = talk_with_prm(conn, "toStop?")
 
     except Exception as e:
