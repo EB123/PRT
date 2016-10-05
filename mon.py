@@ -14,8 +14,10 @@ def active_proxy_workers(**kwargs):
     r1 = kwargs['r1']
     r12 = kwargs['r12']
     servers = kwargs['servers']
+    time_values =  kwargs['time_values']
     active_count = {}
     sites = r1.smembers('processes')
+    now = time.time()
     for site in iter(sites):
         site_processes = r1.smembers(site)
         active_count[site] = {}
@@ -30,6 +32,14 @@ def active_proxy_workers(**kwargs):
             active_count[site]['workers'][pid]['status'] = pid_hash['status']
             active_count[site]['workers'][pid]['working_on'] = pid_hash['working_on'].split('.')[0]
             active_count[site]['workers'][pid]['step'] = pid_hash['step']
+            active_count[site]['workers'][pid]['is_stuck'] = 'ok'
+            if time_values.has_key(pid_hash['step']):
+                if pid_hash['step_start_time'] != 'None':
+                    step_start_time = float(pid_hash['step_start_time'])
+                    if (now - step_start_time)/ (float(60)) > float(time_values[pid_hash['step']]['error']):
+                        active_count[site]['workers'][pid]['is_stuck'] = 'error'
+                    elif (now - step_start_time) / (float(60)) > float(time_values[pid_hash['step']]['warning']):
+                        active_count[site]['workers'][pid]['is_stuck'] = 'warning'
     return active_count
 
 def get_eventlog(**kwargs):
@@ -85,7 +95,8 @@ def start_mon(main_conn):
         sys.exit(1)
     servers = getServersFromComp(r12, 'proxy')
     time_values = load_time_values(r13)
-    monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers}
+    print time_values
+    monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers, 'time_values':time_values}
     this_module = sys.modules[__name__]
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5558", zmq.REP, "bind")
     while True:

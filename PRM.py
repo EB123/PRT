@@ -98,7 +98,7 @@ def create_process(**kwargs):
         processes[site][pid]['conn'] = prm_conn
         processes[site][pid]['proc'] = proc
         processes_lock.release()
-        r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None})
+        r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None, 'step_start_time': None})
         return pid
     except Exception:
         raise
@@ -265,6 +265,7 @@ def start_prm(main_conn):
     except Exception: # TODO - add redis exception
         print "Cant connect to Redis!"
         sys.exit(1)
+    r.flushdb() ### Clean all process data before starting
     formatter = logging.Formatter('%(asctime)s %(worker)s: %(levelname)-8s %(message)s')
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)

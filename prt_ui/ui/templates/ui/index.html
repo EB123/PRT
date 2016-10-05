@@ -34,6 +34,16 @@ td {
 
 }
 
+.tr-alert {
+background-color: rgba(255, 0, 0, 1);
+
+}
+
+.tr-warning {
+background-color:rgba(255,255,0,1);
+
+}
+
     #addToQueue {
 
     }
@@ -688,7 +698,13 @@ $(".panicPause").click(function() {
             <th>Step</th>
         </tr>
     {% for pid, proc_hash in site_hash.workers.items %}
-      <tr>
+      {% if proc_hash.is_stuck == 'error' %}
+        <tr class="tr-alert">
+      {% elif proc_hash.is_stuck == 'warning' %}
+        <tr class="tr-warning">
+      {% else %}
+        <tr>
+      {% endif %}
         <td>{{pid}}</td>
         <td>{{proc_hash.status}}</td>
         <td>{{proc_hash.working_on}}</td>

@@ -18,7 +18,7 @@ def create_zmq_connection(address, port, socket_type): # TODO - should be taken 
 def index(request):
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     #socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
-    socket.send_json(["mon", "active_proxy_workers", ["r1", "r12", "servers"], {}])
+    socket.send_json(["mon", "active_proxy_workers", ["r1", "r12", "servers", "time_values"], {}])
     resp = socket.recv_json()
     context = {'active_workers': resp}
     return render(request, "ui/index.html", context)
@@ -38,7 +38,7 @@ def ajax_create_process(request):
 def ajax_auto_reload(request): # TODO - this func should be called from ajax_create_process and not from jquery
     socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
     #socket.send_json(["prm", "active_proxy_workers", ["processes"], {}])
-    socket.send_json(["mon", "active_proxy_workers", ["r1", "r12", "servers"], {}])
+    socket.send_json(["mon", "active_proxy_workers", ["r1", "r12", "servers", "time_values"], {}])
     resp = socket.recv_json()
     socket.close()
     data = []
@@ -64,8 +64,13 @@ def ajax_auto_reload(request): # TODO - this func should be called from ajax_cre
             data.append("<th>Step</th>")
             data.append("</tr>")
             for pid in resp[site]['workers']:
-                data.append("<tr>")
                 proc_hash = resp[site]['workers'][pid]
+                if proc_hash['is_stuck'] == 'error':
+                    data.append("<tr class='tr-alert'>")
+                elif proc_hash['is_stuck'] == 'warning':
+                    data.append("<tr class='tr-warning'>")
+                else:
+                    data.append("<tr>")
                 data.append("<td>%s</td>" % pid)
                 data.append("<td>%s</td>" % proc_hash['status'])
                 data.append("<td>%s</td>" % proc_hash['working_on'])
