@@ -166,14 +166,91 @@ def ajax_get_config(request):
             socket.send_json(["prm", "get_config", ["r13"], {}])
             resp = socket.recv_json()
             socket.close()
+            config = resp[0]
+            time_values = resp[1]
+            workers_config = resp[2]
             data = []
-            sorted_keys = resp.keys()
-            sorted_keys.sort()
-            for key in sorted_keys:
-                data.append("<div class='enjoy-css4'>")
-                data.append("<p>%s: <input type='text' name='configs' data-confName='%s' value='%s'/></p>" % (
-                                                                                                key, key, resp[key]))
+            sorted_config_keys = config.keys()
+            sorted_config_keys.sort()
+            steps = time_values.keys()
+            steps.sort()
+            data.append("<div id='tabs'>")
+            data.append("<ul>")
+            data.append("<li><a href='#config'>General</a></li>")
+            data.append("<li><a href='#time_values'>Time Values</a></li>")
+            data.append("<li><a href='#workers_config_tabs'>Workers Config</a></li>")
+            data.append("</ul>")
+
+            ###### Config TAB ######
+            data.append("<div id='config'>")
+            for key in sorted_config_keys:
+                data.append("<div class='enjoy-css5'>")
+                data.append("<p>%s: <input type='text' name='configs' data-confName='config' data-keyName='%s' value='%s'/></p>" % (
+                                                                                                key, key, config[key]))
                 data.append("</div>")
+            data.append("</div>")
+            ###### End Of Config TAB ######
+
+            ###### Time Values TAB ######
+            data.append("<div id='time_values'>")
+            data.append("<h4>All values are in minutes</h4>")
+            for step in steps:
+                data.append("<div class='enjoy-css5'>")
+                data.append("<h4>%s</h4>" % step)
+                for level in time_values[step]:
+                    data.append("<p>%s: <input type='text' name='configs' data-confName='time_values:%s' data-keyName='%s' value='%s'/></p>" % (
+                        level, step, level, time_values[step][level]))
+                data.append("</div>")
+            data.append("</div>")
+            ###### End Of Time Values TAB ######
+
+            ###### Workers Config TAB ######
+            data.append("<div id='workers_config_tabs'>")
+            data.append("<ul>")
+            data.append("<li><a href='#workers_config_main'>Main</a></li>")
+            for site in workers_config.keys():
+                if site != 'main':
+                    data.append("<li><a href='#workers_config_%s'>%s</a></li>" % (site, site))
+            data.append("</ul>")
+            for site in workers_config.keys():
+                select = {'default':'', 'restart':'', 'custom':''}
+                try:
+                    select[workers_config[site]['type']] = 'selected'
+                except KeyError:
+                    select['default'] = 'selected'
+                try:
+                    command = workers_config[site]['command']
+                except KeyError:
+                    command = "N/A"
+                try:
+                    if workers_config[site]['type'] == 'custom':
+                        custom = ''
+                    else:
+                        custom = 'disabled'
+                except KeyError:
+                    custom = 'disabled'
+                data.append("<div id='workers_config_%s'" % site)
+                if site == 'main':
+                    try:
+                        if workers_config[site]['use_main'] == 'True':
+                            checked = 'checked'
+                        else:
+                            checked = ''
+                    except KeyError:
+                        checked = ''
+                    data.append("<br><input type='checkbox' name='configs' id='workers_config_use_main' %s>Use Same Config For All Sites<br>" % checked)
+                data.append("<p>Worker Type: <select class='workers_config_select' data-confName='workers_config:%s' name='workers_config_select'>" % site)
+                data.append("<option value='default' data-confName='workers_config:%s' data-keyName='type' %s>Default (Release)</option>" % (site,select['default']))
+                data.append("<option value='restart' data-confName='workers_config:%s' data-keyName='type' %s>Restart</option>" % (site,select['restart']))
+                data.append("<option value='custom' data-confName='workers_config:%s' data-keyName='type' %s>Custom</option>" % (site, select['custom']))
+                data.append("</select></p>")
+                data.append("<p>Command: <input type='text' name='configs' %s data-confName='workers_config:%s' data-keyName='command' value='%s' /></p>"
+                            % (custom, site, command))
+                data.append("</div>")
+            data.append("</div>")
+            ###### End Of Workers Config TAB ######
+
+            data.append("</div>")
             return HttpResponse(data)
     except Exception:
         return HttpResponseServerError(resp)
@@ -184,7 +261,7 @@ def ajax_update_config(request):
         if request.method == "POST" and request.is_ajax():
             configs = json.loads(request.POST['ajaxarg_configs'])
             socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-            socket.send_json(["prm", "update_config", ["r13"], {'configs': configs}])
+            socket.send_json(["prm", "update_config", ["r13", "processes"], {'configs': configs}])
             resp = socket.recv_json()
             socket.close()
             return HttpResponse(json.dumps(resp))

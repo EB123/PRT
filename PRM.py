@@ -215,19 +215,74 @@ def start_workers_for_release(**kwargs):
 def get_config(**kwargs):
     r13 = kwargs['r13']
     config = r13.hgetall('config')
-    return config
+    steps = r13.smembers('steps')
+    sites = r13.smembers('sites')
+    sites.add('main')
+    workers_config = {}
+    for site in iter(sites):
+        workers_config[site] = r13.hgetall('workers_config:%s' % site)
+    time_values = {}
+    for step in iter(steps):
+        time_values[step] = {}
+        step_values = r13.hgetall('time_values:%s' % step)
+        for key in step_values:
+            time_values[step][key] = step_values[key]
+    return [config, time_values, workers_config]
 
 def update_config(**kwargs):
     r13 = kwargs['r13']
     configs = kwargs['configs']
+    processes = kwargs['processes']
+    print configs
     response = []
-    current_config = r13.hgetall('config')
+    #current_config = r13.hgetall('config')
+
+    for item in reversed(configs):
+        if item[0] == 'workers_config:main' and item[1] == 'use_main':
+            if item[2]:
+                item[2] = 'True'
+            else:
+                item[2] = 'False'
+            new_use_main = item[2]
+            break
+
+    current_use_main = r13.hget('workers_config:main', 'use_main')
+    print type(current_use_main)
+    print type(new_use_main)
+    if current_use_main != new_use_main:
+        workers_config = {}
+        for item in configs:
+            if item[0].startswith('workers_config'):
+                site = item[0].split(':')[1]
+                if not workers_config.has_key(site):
+                    workers_config[site] = {}
+                workers_config[site][item[1]] = item[2]
+        print workers_config
+        main_type = workers_config['main']['type']
+        try:
+            main_command = workers_config['main']['command']
+        except KeyError:
+            main_command = ''
+        for site in processes:
+            if len(processes[site].keys()) > 0:
+                site_type = workers_config[site]['type']
+                try:
+                    site_command = workers_config[site]['command']
+                except KeyError:
+                    site_command = ''
+                if main_type != site_type:
+                    raise RuntimeError("Can't change configs for %s's workers while there are active workers" % site)
+                if main_type == site_type and main_type == 'custom' and main_command != site_command:
+                    raise RuntimeError("Can't change configs for %s's workers while there are active workers" % site)
+
     for item in configs:
-        key = item[0]
-        value = item[1]
-        if current_config[key] != value:
-            r13.hmset('config', {key:value})
-            response.append(key)
+        conf = item[0]
+        key = item[1]
+        value = item[2]
+        current_config = r13.hget(conf, key) # TODO - find a way that only values that are being changed will arrive here
+        if current_config != value:
+            r13.hmset(conf, {key:value})
+            response.append('%s - %s' % (conf, key))
     return response
 
 

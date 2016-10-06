@@ -81,6 +81,26 @@ background-color:rgba(255,255,0,1);
     }
 
 
+    .enjoy-css5 {
+
+  top: 0;
+  right: 5%;
+  bottom: 0;
+  left: 0;
+  margin: 2% 0 2% 5%;
+  overflow: scroll;
+  border: 0.5px solid rgba(0,150,255,0.91);
+  font: normal 17px/2 "Times New Roman", Times, serif;
+    text-indent: 13px;
+  text-align: justify;
+  -o-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+        width: 85%;
+    overflow: auto !important;
+    border-style: solid;
+}
+
+
     .enjoy-css4 {
   -webkit-box-sizing: content-box;
   -moz-box-sizing: content-box;
@@ -604,6 +624,31 @@ $(document).ready(function(){
 
    $(".configButton").on("click", function() {
         $("#configButton").load("{% url 'ui:ajax_get_config' %}", {csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+            if ( $('#workers_config_use_main').prop("checked") ) {
+                $('#workers_config_tabs').tabs({ disabled:true });
+            } else {
+                $('#workers_config_tabs').tabs();
+            }
+            $('#tabs').tabs();
+            $('#workers_config_use_main').on('change', function() {
+                if ( $(this).prop("checked") ) {
+                    $('#workers_config_tabs').tabs({ disabled:true });
+                } else {
+                    $('#workers_config_tabs').tabs({ disabled:false });
+                }
+            });
+            $('.workers_config_select').on('change', function() {
+                var confName = $(this).attr("data-confName");
+                var target_input = $("input:text[data-confName=confName]");
+                if ( $("option:selected", this).val() == 'custom' ) {
+                    $("input:text[data-confName='" + confName+ "']").prop("disabled", false);
+                    $("input:text[data-confName='" + confName + "']").val("");
+                } else {
+                    $("input:text[data-confName='" + confName + "']").prop("disabled", true);
+                    $("input:text[data-confName='" + confName + "']").val("N/A");
+                }
+
+            });
             $('#configButton').dialog({
                 modal:true,
                 width: 1200,
@@ -612,9 +657,20 @@ $(document).ready(function(){
                     Submit: function() {
                         var configs = new Array();
                         $("input:text[name='configs']").each(function() {
-                            var key = $(this).attr("data-confName");
+                            if ( !$(this).prop("disabled") ) {
+                                var conf = $(this).attr("data-confName");
+                                var key = $(this).attr("data-keyName");
+                                var val = $(this).val();
+                                configs.push([conf, key, val]);
+                            }
+                        });
+                        var use_main = $("input:checkbox[name='configs']").prop("checked");
+                        configs.push(['workers_config:main', 'use_main', use_main]);
+                        $("select[name='workers_config_select'] option:selected").each(function() {
+                            var conf = $(this).attr("data-confName");
+                            var key = $(this).attr("data-keyName");
                             var val = $(this).val();
-                            configs.push([key, val]);
+                            configs.push([conf, key, val]);
                         });
                         $(this).updateConfig({ 'configs':JSON.stringify(configs)}, function(){
                             $(this).removeClass('ui-state-focus');
