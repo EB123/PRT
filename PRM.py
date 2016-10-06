@@ -85,10 +85,17 @@ def create_process(**kwargs):
         queues = kwargs['queues']
         site = kwargs['site']
         r = kwargs['r']
+        r13 = kwargs['r13']
         processes_lock = kwargs['processes_lock']
         prm_conn, proc_conn = multiprocessing.Pipe()
         worker_num = len(processes[site]) + 1
-        proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, site, worker_num))
+        worker_type = r13.hget('workers_config:%s' % site, 'type')
+        if worker_type == 'custom':
+            custom_command = r13.hget('workers_config:%s' % site, 'command')
+        else:
+            custom_command = ''
+        proc = multiprocessing.Process(target=proxy_worker.proxy_worker, args=(queues[site], proc_conn, site,
+                                                                               worker_num, worker_type, custom_command))
         proc.daemon = True
         proc.start()
         pid = str(proc.pid)
@@ -98,7 +105,8 @@ def create_process(**kwargs):
         processes[site][pid]['conn'] = prm_conn
         processes[site][pid]['proc'] = proc
         processes_lock.release()
-        r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None, 'step_start_time': None})
+        r.hmset(pid, {'status': 'Idle', 'working_on': None, 'step': None, 'step_start_time': None, 'type': worker_type,
+                      'custom_command': custom_command})
         return pid
     except Exception:
         raise

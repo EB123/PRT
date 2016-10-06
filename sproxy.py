@@ -254,10 +254,7 @@ class sProxy:
         exitCode, output, error = self._ssh_execute(self.sshconn, cmd)
         return exitCode, output, error
 
-    """
-    def out_rotation(self):
-        # TODO - Create out_rotation func
-        time.sleep(1)
-        return "Proxy is out of rotation"
-    """
 
+    def custom_command(self, command):
+        exitCode, output, error = self._ssh_execute(self.sshconn, command)
+        return output

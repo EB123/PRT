@@ -13,7 +13,7 @@ import redis
 import json
 import datetime
 
-def proxy_worker(q, conn, site, worker_num):
+def proxy_worker(q, conn, site, worker_num, worker_type, custom_command):
 
     #### A few constant dict for changing job states ####
     CacheDumpJob_pause = {'daemon': {'state' : 'JOB_PAUSED'}}
@@ -72,6 +72,8 @@ def proxy_worker(q, conn, site, worker_num):
             print "Cant connect to Redis!"
             sys.exit(1)
         me = {'worker': 'Worker-%s-%s' % (site, worker_num)}
+        middle_operation = {'default': 'release_proxy', 'restart': '', 'custom': 'custom_command'}
+        print middle_operation[worker_type]
         #me = 'Worker-%s-%s' % (site, worker_num)
         stopWorker = False
         #logger = temp_logger(logging_q)
@@ -114,8 +116,8 @@ def proxy_worker(q, conn, site, worker_num):
                                             'Finish Time': '-', 'Proxy': proxy.name, 'Old Version': currentVersion,
                                                                 'New Version': config['version'], 'Status': 'Started'})
             index_eventid(r14, eventid, *[start_date_day, start_date_month, start_date_year])
-            release_procedure_kwargs = {'release_proxy': {'version': config['version'],
-                                                        'md5': config['md5'], 'zip_file_dir': config['zip_file_dir']}}
+            release_procedure_kwargs = {'release_proxy': {'version': config['version'], 'md5': config['md5'],
+                                'zip_file_dir': config['zip_file_dir']}, 'custom_command': {'command': custom_command}}
             ###message = [['status', currentStatus], ['working_on', currentProxy], ['step', currentStep]]
             ###prt_utils.message_to_prm(conn, message)
             while proxy.check_dump_age() > 50: # If dump age is more than 54 minutes - Create new dump
@@ -136,10 +138,12 @@ def proxy_worker(q, conn, site, worker_num):
                         prt_utils.worker_get_instructions(conn, currentStatus, r)
                         time.sleep(1)
                     logger.info("Checking dump again...", extra=me)
-            release_procedure = ["stop_proxy", "release_proxy", "start_proxy"]
+            release_procedure = ["stop_proxy", middle_operation[worker_type], "start_proxy"]
 
 
             for action in release_procedure:
+                if action == '':
+                    continue
                 ###message = [['step', action]]
                 ###prt_utils.message_to_prm(conn, message)
                 r.hmset(pid, {'step': action, 'step_start_time': time.time()})

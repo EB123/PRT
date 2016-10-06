@@ -28,7 +28,7 @@ def ajax_create_process(request):
     if request.method == "POST" and request.is_ajax():
         site = request.POST['ajaxarg_site']
         socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-        socket.send_json(["prm", "create_process", ["processes", "queues", "r", "processes_lock"], {"site": site}])
+        socket.send_json(["prm", "create_process", ["processes", "queues", "r", "processes_lock", "r13"], {"site": site}])
         resp = socket.recv_json()
         #data = auto_reload(socket)
         socket.close()

@@ -5,7 +5,7 @@ import prt_utils
 import sys
 import requests
 import json
-
+import traceback
 
 ###SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
 SITES = ["OPS_PROXY", "OPS_PROXY_2"]
@@ -22,7 +22,7 @@ def active_proxy_workers(**kwargs):
         site_processes = r1.smembers(site)
         active_count[site] = {}
         active_count[site]['workers'] = {}
-        active_count[site]['active_workers'] = r1.scard(site_processes)
+        active_count[site]['active_workers'] = r1.scard(site)
         active_count[site]['proxies'] = r12.lrange(site, 0, -1)
         active_count[site]['proxies'].sort()
         #active_count[site]['proxies'] = servers[site]
@@ -32,8 +32,10 @@ def active_proxy_workers(**kwargs):
             active_count[site]['workers'][pid]['status'] = pid_hash['status']
             active_count[site]['workers'][pid]['working_on'] = pid_hash['working_on'].split('.')[0]
             active_count[site]['workers'][pid]['step'] = pid_hash['step']
+            active_count[site]['workers'][pid]['type'] = pid_hash['type']
             active_count[site]['workers'][pid]['is_stuck'] = 'ok'
             if time_values.has_key(pid_hash['step']):
+                print time_values[pid_hash['step']]
                 if pid_hash['step_start_time'] != 'None':
                     step_start_time = float(pid_hash['step_start_time'])
                     if (now - step_start_time)/ (float(60)) > float(time_values[pid_hash['step']]['error']):
@@ -80,7 +82,7 @@ def load_time_values(r13):
     steps = r13.smembers('steps')
     time_values = {}
     for step in iter(steps):
-        time_values[step] = r13.hgetall('%s:time_values' % step)
+        time_values[step] = r13.hgetall('time_values:%s' % step)
     return time_values
 
 def start_mon(main_conn):
@@ -119,7 +121,11 @@ def start_mon(main_conn):
             print "MON exception handler"
             time.sleep(2)
             response = str(e)  # TODO - respone should contain a "success/fail" field
-            print "%s" % e  # TODO - Make sure the full traceback is printed. right now only e.message is printed.
+            #print "%s" % e  # TODO - Make sure the full traceback is printed. right now only e.message is printed.
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print "*** print_exception:"
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=2, file=sys.stdout)
         finally:
             try:
                 socket.send_json(response)
