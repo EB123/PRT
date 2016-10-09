@@ -252,7 +252,8 @@ def update_config(**kwargs):
             else:
                 item[2] = 'False'
             new_use_main = item[2]
-            break
+        elif item[0].startswith('workers_config') and item[0] != 'workers_config:main' and item[1] == 'type':
+
 
     current_use_main = r13.hget('workers_config:main', 'use_main')
     print type(current_use_main)

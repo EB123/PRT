@@ -11,17 +11,19 @@ from logging.handlers import RotatingFileHandler
 class sProxy:
 
 
-    def __init__(self, name, log_dir = '/tmp', port='8080', proxy_pl_port = '8090', user='root', is_test = False):
+    def __init__(self, name, light = False, log_dir = '/tmp', port='8080', proxy_pl_port = '8090', user='root', is_test = False):
         self.name = name
         self.user = user
-        self.sshconn = self._sshconnect(name, user, is_test)
+        if not light:
+            self.sshconn = self._sshconnect(name, user, is_test)
         self.port = port
         self.proxy_pl_port = proxy_pl_port
         #self.base_cmd = '. ./.paramiko_profile ; '
         self.base_cmd = ''
         self.is_test = is_test
         self.compsvc = {'address': 'dev-compsvc01.dev.peer39dom.com', 'port': '8080'}
-        self.logger = self._configLogger(log_dir)
+        if not light:
+            self.logger = self._configLogger(log_dir)
         # TODO - self.fqdn
 
     def __str__(self):

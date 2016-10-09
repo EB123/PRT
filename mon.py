@@ -6,9 +6,36 @@ import sys
 import requests
 import json
 import traceback
+import sproxy
+import threading
+import datetime
 
 ###SITES = ["ny_an", "ny_lb", "ams_an", "ams_lb", "lax_an", "lax_lb", "sg"]
 SITES = ["OPS_PROXY", "OPS_PROXY_2"]
+
+def proxy_query(r1, r12):
+
+    sites = r1.smembers('processes')
+    proxies = {}
+    keys = ['version', 'dump_age_min']
+    for site in sites:
+        proxies[site] = {}
+        proxy_list = r12.lrange(site, 0, -1)
+        for proxy in proxy_list:
+            proxies[site][proxy] = {}
+    while True:
+        for site in iter(sites):
+            for proxy in proxies[site]:
+                p = sproxy.sProxy(proxy, light=True)
+                resp = p.query_proxy(keys)
+                resp = resp.split() # TODO - handle scenario that status_code is not 200
+                for i in range(len(keys)):
+                    proxies[site][proxy][keys[i]] = resp[i]
+                proxies[site][proxy]['timestamp'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                r12.hmset(proxy, proxies[site][proxy])
+        print proxies
+        time.sleep(20)
+
 
 def active_proxy_workers(**kwargs):
     r1 = kwargs['r1']
@@ -101,6 +128,9 @@ def start_mon(main_conn):
     monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers, 'time_values':time_values}
     this_module = sys.modules[__name__]
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5558", zmq.REP, "bind")
+    proxy_query_thread = threading.Thread(target=proxy_query, args=(r1, r12))
+    proxy_query_thread.daemon = True
+    proxy_query_thread.start()
     while True:
         while socket.poll(timeout=10) == 0:
             time.sleep(0.2)
