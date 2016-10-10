@@ -258,6 +258,11 @@ def update_config(**kwargs):
             else:
                 item[2] = 'False'
             new_use_main = item[2]
+        elif item[0] == 'config' and item[1] == 'show_all_proxies':
+            if item[2]:
+                item[2] = 'True'
+            else:
+                item[2] = 'False'
         elif item[0].startswith('workers_config') and item[1] == 'type':
             site = item[0].split(':')[1]
             new_workers_config[site] = {}

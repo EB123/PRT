@@ -3,6 +3,8 @@ import zmq
 from django.http import  HttpResponse, HttpResponseServerError
 import json
 import time
+import sys
+import traceback
 
 #address = "127.0.0.1"
 #port = "4141"
@@ -185,8 +187,16 @@ def ajax_get_config(request):
             data.append("<div id='config'>")
             for key in sorted_config_keys:
                 data.append("<div class='enjoy-css5'>")
-                data.append("<p>%s: <input type='text' name='configs' data-confName='config' data-keyName='%s' value='%s'/></p>" % (
+                if key != 'show_all_proxies':
+                    data.append("<p>%s: <input type='text' name='configs' data-confName='config' data-keyName='%s' value='%s'/></p>" % (
                                                                                                 key, key, config[key]))
+                else:
+                    if config[key] == 'True':
+                        checked = 'checked'
+                    else:
+                        checked = ''
+                    data.append("<p>%s: <input type='checkbox' name='configs' data-confName='config' data-keyName='%s' %s/></p>" % (
+                                                                                                key, key, checked))
                 data.append("</div>")
             data.append("</div>")
             ###### End Of Config TAB ######
@@ -238,7 +248,7 @@ def ajax_get_config(request):
                             checked = ''
                     except KeyError:
                         checked = ''
-                    data.append("<br><input type='checkbox' name='configs' id='workers_config_use_main' %s>Use Same Config For All Sites<br>" % checked)
+                    data.append("<br><input type='checkbox' name='configs' data-confName='workers_config:main' id='workers_config_use_main' %s>Use Same Config For All Sites<br>" % checked)
                 data.append("<p>Worker Type: <select class='workers_config_select' name='workers_config_select' data-confName='workers_config:%s'>" % site)
                 data.append("<option value='default' data-confName='workers_config:%s' data-keyName='type' data-oldval='%s' %s>Default (Release)</option>"
                                                                                                                         % (site, workers_config[site]['type'], select['default']))
@@ -308,4 +318,31 @@ def ajax_show_eventlog(request):
             data.append("</table>")
             return HttpResponse(data)
     except Exception as e:
+        return HttpResponseServerError(e)
+
+
+def ajax_get_proxies(request):
+    try:
+        if request.method == "POST" and request.is_ajax():
+            site = request.POST['site']
+            socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
+            socket.send_json(["mon", "get_proxies", ["r12", "r13"], {'site':site}])
+            resp = socket.recv_json()
+            socket.close()
+            data = []
+            print resp
+            for site in resp[0]:
+                data.append("<input type='checkbox' name='selectAll' class='selectAll' id='selectAll-%s' value='{{site}}'>Select All</input><br>" % site)
+                proxies = resp[0][site].keys()
+                proxies.sort()
+                for proxy in proxies:
+                    if resp[2] == 'True' or resp[0][site][proxy] != resp[1]:
+                        data.append("<input type='checkbox' name='myCheckBoxes' id='myCheckBoxes-%s' class='myCheckBoxes' value='%s' data-version='%s'>%s</input><br>"
+                                % (proxy, proxy, resp[0][site][proxy], proxy))
+            return HttpResponse(data)
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print "*** print_exception:"
+        traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                  limit=2, file=sys.stdout)
         return HttpResponseServerError(e)

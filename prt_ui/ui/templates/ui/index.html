@@ -497,7 +497,8 @@ $(document).ready(function(){
 
     var target_button = event.target.id;
     var site_name = $("#"+target_button).closest("div").attr("id");
-     $("#addToQueue-"+site_name).dialog({
+    $("#addToQueue-"+site_name).load("{% url 'ui:ajax_get_proxies' %}", {site: site_name, csrfmiddlewaretoken:'{{ csrf_token }}'}, function(){
+      $("#addToQueue-"+site_name).dialog({
         height: 'auto',
         width: 'auto',
         buttons: {
@@ -521,16 +522,12 @@ $(document).ready(function(){
             }
         },
          beforeClose: function() {
-            $("input:reset").trigger("click");
-            $(this).find("checkbox").filter(function() {
-                return $(this).attr("class") == "selectAll";
-            })
-            .prop("checked", false);
-            $("#addToQueue-"+site_name)[0].reset();
+
             $(this).dialog("destroy");
+            $('button').prop("disabled", false);
         }
      });
-
+    });
   });
 
    $(".show_queues").on("click", function() {
@@ -573,10 +570,15 @@ $(document).ready(function(){
 
     $(document).on("change", ".selectAll", function(event) {
         var target_button = event.target.id;
-        var form = $("#"+target_button).closest("form")
+        var form = $("#"+target_button).closest("div")
         var status = $("#"+target_button).prop("checked");
         form.find(".myCheckBoxes").each(function() {
             $(this).prop('checked', status);
+            if (status) {
+                $(this).prop('disabled', true);
+            } else {
+                $(this).prop('disabled', false);
+            }
         });
     });
 
@@ -664,8 +666,10 @@ $(document).ready(function(){
                                 configs.push([conf, key, val]);
                             }
                         });
-                        var use_main = $("input:checkbox[name='configs']").prop("checked");
+                        var use_main = $("input:checkbox[data-confName^='workers_config']").prop("checked");
                         configs.push(['workers_config:main', 'use_main', use_main]);
+                        var show_all_proxies = $("input:checkbox[data-confName='config']").prop("checked");
+                        configs.push(['config', 'show_all_proxies', show_all_proxies]);
                         $("select[name='workers_config_select'] option:selected").each(function() {
                             var conf = $(this).attr("data-confName");
                             var key = $(this).attr("data-keyName");
@@ -738,16 +742,9 @@ $(".panicPause").click(function() {
 <div id="{{site}}" class="enjoy-css2">
     <button  style="margin-right:3px" id="addWorker-{{site}}" data-locked="False" class="Add-Worker"> Add Worker   </button>
     <button  style="margin-top:0" id="addToQ-{{site}}"  data-locked="False" class="Add-To-Q2"> Add To Queue   </button>
-    <form id="addToQueue-{{site}}" value="{{site}}" style="display:none">
-            <fieldset>
-            <input type="checkbox" name="selectAll" class="selectAll" id="selectAll-{{site}}" value="{{site}}">Select All</input><br>
-        {% for proxy_name, version in site_hash.proxies %}
-            <input type="checkbox" name="myCheckBoxes" id="myCheckBoxes-{{proxy_name}}" class="myCheckBoxes"
-                                            value="{{proxy_name}}" data-version="{{version}}">{{proxy_name}}</input><br>
-        {% endfor %}
-            <input type='reset' style="display:none"/>
-            </fieldset>
-    </form>
+    <div id="addToQueue-{{site}}" value="{{site}}" style="display:none">
+
+    </div>
 <h3 class="text_data">{{site}}: {{site_hash.active_workers}} active workers</h3>
 <table>
     {% if site_hash.workers.items %}

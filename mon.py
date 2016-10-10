@@ -91,6 +91,22 @@ def get_eventlog(**kwargs):
     all_events.sort(key = lambda x:int(x[0].split('-')[1]), reverse=True)
     return all_events
 
+def get_proxies(**kwargs):
+    r12 = kwargs['r12']
+    r13 = kwargs['r13']
+    site = kwargs['site']
+    proxies = {}
+    proxies[site] = {}
+    proxies_list = r12.lrange(site, 0, -1)
+    for proxy in proxies_list:
+        proxies[site][proxy] = r12.hget(proxy, 'version')
+    current_version = r13.hget('config', 'version')
+    show_all_proxies = r13.hget('config', 'show_all_proxies')
+    return [proxies, current_version, show_all_proxies]
+
+
+
+
 def getServersFromComp(r12, comp, env='dev'):
 
     compsvc = {'dev': 'dev-compsvc01.dev.peer39dom.com'} # TODO - Add prod compsvc
@@ -118,6 +134,7 @@ def load_time_values(r13):
         time_values[step] = r13.hgetall('time_values:%s' % step)
     return time_values
 
+
 def start_mon(main_conn):
 
     try:
@@ -131,7 +148,7 @@ def start_mon(main_conn):
     servers = getServersFromComp(r12, 'proxy')
     time_values = load_time_values(r13)
     print time_values
-    monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'servers': servers, 'time_values':time_values}
+    monDict = {'r1': r1, 'r12': r12, 'r14': r14, 'r13': r13, 'servers': servers, 'time_values':time_values}
     this_module = sys.modules[__name__]
     socket = prt_utils.create_zmq_connection("127.0.0.1", "5558", zmq.REP, "bind")
     proxy_query_thread = threading.Thread(target=proxy_query, args=(r1, r12))
