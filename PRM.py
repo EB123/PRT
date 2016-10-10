@@ -14,6 +14,8 @@ import proxy_worker
 import redis
 import requests
 import json
+import traceback
+
 
 # TODO - scenario1: Proxy is down at the beginning of the release process (before check_dump_age)
 
@@ -204,6 +206,7 @@ def start_workers_for_release(**kwargs):
     queues = kwargs['queues']
     r = kwargs['r']
     processes_lock = kwargs['processes_lock']
+    r13 = kwargs['r13']
     response = {}
     for item in numOfWorkers:
         site = item[0]
@@ -216,6 +219,7 @@ def start_workers_for_release(**kwargs):
             newKwargs['site'] = site
             newKwargs['r'] = r
             newKwargs['processes_lock'] = processes_lock
+            newKwargs['r13'] = r13
             pid = create_process(**newKwargs)
             response[site].append(pid)
     return response
@@ -244,29 +248,38 @@ def update_config(**kwargs):
     print configs
     response = []
     #current_config = r13.hgetall('config')
+    workers_type_changed = False
+    new_workers_config = {}
 
-    for item in reversed(configs):
+    for item in configs:
         if item[0] == 'workers_config:main' and item[1] == 'use_main':
             if item[2]:
                 item[2] = 'True'
             else:
                 item[2] = 'False'
             new_use_main = item[2]
-        elif item[0].startswith('workers_config') and item[0] != 'workers_config:main' and item[1] == 'type':
+        elif item[0].startswith('workers_config') and item[1] == 'type':
+            site = item[0].split(':')[1]
+            new_workers_config[site] = {}
+            new_workers_config[site]['type'] = item[2]
 
+    for site in new_workers_config:
+        if site == 'main':
+            for s in processes:
+                if len(processes[s].keys()) > 0:
+                    raise RuntimeError("Can't change configs for %s's workers while there are active workers" % site)
+        else:
+            if len(processes[site].keys()) > 0:
+                raise RuntimeError("Can't change configs for %s's workers while there are active workers" % site)
 
     current_use_main = r13.hget('workers_config:main', 'use_main')
-    print type(current_use_main)
-    print type(new_use_main)
     if current_use_main != new_use_main:
         workers_config = {}
-        for item in configs:
-            if item[0].startswith('workers_config'):
-                site = item[0].split(':')[1]
-                if not workers_config.has_key(site):
-                    workers_config[site] = {}
-                workers_config[site][item[1]] = item[2]
-        print workers_config
+        for item in r13.keys('workers_config:*'):
+            site = item.split(':')[1]
+            workers_config[site] = r13.hgetall(item)
+        for site in new_workers_config:
+            workers_config[site] = new_workers_config[site]
         main_type = workers_config['main']['type']
         try:
             main_command = workers_config['main']['command']
@@ -386,7 +399,11 @@ def start_prm(main_conn):
             print "PRM exception handler"
             time.sleep(2)
             response = str(e) # TODO - respone should contain a "success/fail" field
-            print "%s" % e # TODO - Make sure the full traceback is printed. right now only e.message is printed.
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            #print "%s" % e # TODO - Make sure the full traceback is printed. right now only e.message is printed.
+            print "*** print_exception:"
+            traceback.print_exception(exc_type, exc_value, exc_traceback,
+                                      limit=2, file=sys.stdout)
         finally:
             try:
                 socket.send_json(response)

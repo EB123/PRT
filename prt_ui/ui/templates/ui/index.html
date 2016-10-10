@@ -670,7 +670,10 @@ $(document).ready(function(){
                             var conf = $(this).attr("data-confName");
                             var key = $(this).attr("data-keyName");
                             var val = $(this).val();
-                            configs.push([conf, key, val]);
+                            var oldval = $(this).attr("data-oldval");
+                            if (oldval != val) {
+                                configs.push([conf, key, val]);
+                            }
                         });
                         $(this).updateConfig({ 'configs':JSON.stringify(configs)}, function(){
                             $(this).removeClass('ui-state-focus');
@@ -738,8 +741,9 @@ $(".panicPause").click(function() {
     <form id="addToQueue-{{site}}" value="{{site}}" style="display:none">
             <fieldset>
             <input type="checkbox" name="selectAll" class="selectAll" id="selectAll-{{site}}" value="{{site}}">Select All</input><br>
-        {% for proxy_name in site_hash.proxies %}
-            <input type="checkbox" name="myCheckBoxes" id="myCheckBoxes-{{proxy_name}}" class="myCheckBoxes" value="{{proxy_name}}">{{proxy_name}}</input><br>
+        {% for proxy_name, version in site_hash.proxies %}
+            <input type="checkbox" name="myCheckBoxes" id="myCheckBoxes-{{proxy_name}}" class="myCheckBoxes"
+                                            value="{{proxy_name}}" data-version="{{version}}">{{proxy_name}}</input><br>
         {% endfor %}
             <input type='reset' style="display:none"/>
             </fieldset>

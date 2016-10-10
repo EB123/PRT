@@ -33,7 +33,6 @@ def proxy_query(r1, r12):
                     proxies[site][proxy][keys[i]] = resp[i]
                 proxies[site][proxy]['timestamp'] = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
                 r12.hmset(proxy, proxies[site][proxy])
-        print proxies
         time.sleep(20)
 
 
@@ -52,6 +51,13 @@ def active_proxy_workers(**kwargs):
         active_count[site]['active_workers'] = r1.scard(site)
         active_count[site]['proxies'] = r12.lrange(site, 0, -1)
         active_count[site]['proxies'].sort()
+        active_count[site]['proxy_stats'] = {}
+        for i in range(len(active_count[site]['proxies'])):
+            proxy_name = active_count[site]['proxies'][i]
+            proxy_stats = r12.hgetall(proxy_name)
+            active_count[site]['proxy_stats'][proxy_name] = proxy_stats
+            active_count[site]['proxies'][i] = [proxy_name, proxy_stats['version']]
+
         #active_count[site]['proxies'] = servers[site]
         for pid in iter(site_processes):
             pid_hash = r1.hgetall(pid)
@@ -82,7 +88,7 @@ def get_eventlog(**kwargs):
         except KeyError:
             pass
         all_events.append([event, event_hash])
-    all_events.sort(key = lambda x:x[0], reverse=True)
+    all_events.sort(key = lambda x:int(x[0].split('-')[1]), reverse=True)
     return all_events
 
 def getServersFromComp(r12, comp, env='dev'):

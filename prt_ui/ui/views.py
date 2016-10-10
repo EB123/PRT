@@ -150,7 +150,7 @@ def ajax_start_workers_for_release(request):
         if request.method == "POST" and request.is_ajax():
             numOfWorkers = json.loads(request.POST['ajaxarg_numOfWorkers'])
             socket = create_zmq_connection("127.0.0.1", "5553", zmq.REQ)
-            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues", "r", "processes_lock"],
+            socket.send_json(["prm", "start_workers_for_release", ["processes", "queues", "r", "processes_lock", "r13"],
                                                                                     {'numOfWorkers': numOfWorkers}])
             resp = socket.recv_json()
             socket.close()
@@ -239,10 +239,13 @@ def ajax_get_config(request):
                     except KeyError:
                         checked = ''
                     data.append("<br><input type='checkbox' name='configs' id='workers_config_use_main' %s>Use Same Config For All Sites<br>" % checked)
-                data.append("<p>Worker Type: <select class='workers_config_select' data-confName='workers_config:%s' name='workers_config_select'>" % site)
-                data.append("<option value='default' data-confName='workers_config:%s' data-keyName='type' %s>Default (Release)</option>" % (site,select['default']))
-                data.append("<option value='restart' data-confName='workers_config:%s' data-keyName='type' %s>Restart</option>" % (site,select['restart']))
-                data.append("<option value='custom' data-confName='workers_config:%s' data-keyName='type' %s>Custom</option>" % (site, select['custom']))
+                data.append("<p>Worker Type: <select class='workers_config_select' name='workers_config_select' data-confName='workers_config:%s'>" % site)
+                data.append("<option value='default' data-confName='workers_config:%s' data-keyName='type' data-oldval='%s' %s>Default (Release)</option>"
+                                                                                                                        % (site, workers_config[site]['type'], select['default']))
+                data.append("<option value='restart' data-confName='workers_config:%s' data-keyName='type' data-oldval='%s' %s>Restart</option>"
+                                                                                                                        % (site, workers_config[site]['type'], select['restart']))
+                data.append("<option value='custom' data-confName='workers_config:%s' data-keyName='type' data-oldval='%s' %s>Custom</option>"
+                                                                                                                        % (site, workers_config[site]['type'], select['custom']))
                 data.append("</select></p>")
                 data.append("<p>Command: <input type='text' name='configs' %s data-confName='workers_config:%s' data-keyName='command' value='%s' /></p>"
                             % (custom, site, command))
